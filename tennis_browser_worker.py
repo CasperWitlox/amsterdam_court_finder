@@ -953,6 +953,7 @@ def check_bookaball_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any
         page.set_default_timeout(12_000)
         page.set_default_navigation_timeout(45_000)
         page.goto(booking_url, wait_until="domcontentloaded", timeout=45_000)
+        dismiss_bookaball_preferences(page)
         club_card = page.get_by_text("Amsterdam Racket Club", exact=True).first
         club_card.wait_for(state="visible", timeout=25_000)
         club_card.click()
@@ -1227,6 +1228,18 @@ def reject_optional_cookies(page: Any) -> None:
     if reject_button.count() and reject_button.first.is_visible():
         reject_button.first.click(timeout=5_000)
         page.wait_for_timeout(300)
+
+
+def dismiss_bookaball_preferences(page: Any) -> None:
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    skip_button = page.locator('[data-e2e="user-preferences-popup-skip"]')
+    try:
+        skip_button.wait_for(state="visible", timeout=5_000)
+    except PlaywrightTimeoutError:
+        return
+    skip_button.click(timeout=5_000)
+    skip_button.wait_for(state="hidden", timeout=5_000)
 
 
 def check_usc_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any]:
