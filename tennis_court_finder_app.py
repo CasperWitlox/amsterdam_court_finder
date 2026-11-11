@@ -1923,9 +1923,47 @@ def read_browser_worker_output(
         responses.put({"ok": False, "error": error_message})
 
 
+@st.cache_resource
+def ensure_playwright_browser_installed() -> bool:
+    try:
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "playwright",
+                "install",
+                "chromium",
+                "--only-shell",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=240,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(
+            "Installing the Playwright Chromium browser timed out. "
+            "Try again after the app restarts."
+        ) from error
+    except subprocess.CalledProcessError as error:
+        details = (error.stderr or error.stdout or "").strip()
+        if details:
+            details = details[-3000:]
+        message = "Could not install the Playwright Chromium browser."
+        if details:
+            message += f" Installer output: {details}"
+        raise RuntimeError(message) from error
+    except OSError as error:
+        raise RuntimeError(
+            f"Could not run the Playwright browser installer: {error}"
+        ) from error
+    return True
+
+
 def start_browser_worker(
     secrets: tuple[str, str] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    ensure_playwright_browser_installed()
     worker_script = Path(__file__).with_name("tennis_browser_worker.py")
     process = subprocess.Popen(
         [
