@@ -2360,11 +2360,8 @@ def availability_credentials_dialog(
 
 def booking_browser_controls(
     clubs: list[dict[str, Any]],
-    selected_date: date,
-    selected_time: time,
-    duration_minutes: int,
     action_column: Any,
-) -> None:
+) -> bool:
     club_names = {item["name"] for item in clubs}
     missing_clubs = BROWSER_CHECK_CLUBS - club_names
     if missing_clubs:
@@ -2372,51 +2369,13 @@ def booking_browser_controls(
             "Configured availability-check club(s) are missing from the saved club list: "
             + ", ".join(sorted(missing_clubs))
         )
-        return
+        return False
+    return action_column.button(
+        "Check availability",
+        key="check_all_booking_availability",
+        type="primary",
+    )
 
-    available_clubs = [
-        item for item in clubs if item["name"] in BROWSER_CHECK_CLUBS
-    ]
-    saved_credentials = st.session_state.get("availability_portal_credentials")
-    with st.container():
-        if action_column.button(
-            "Check availability",
-            key="check_all_booking_availability",
-            type="primary",
-        ):
-            if saved_credentials:
-                st.session_state["availability_check_started"] = True
-                try:
-                    with st.spinner("Checking all public (non-member) clubs..."):
-                        run_availability_checks(
-                            available_clubs,
-                            selected_date,
-                            selected_time,
-                            int(duration_minutes),
-                            saved_credentials,
-                        )
-                except (
-                    OSError,
-                    RuntimeError,
-                    TimeoutError,
-                    subprocess.TimeoutExpired,
-                ) as error:
-                    st.session_state["availability_check_failures"] = {
-                        "All configured clubs": str(error)
-                    }
-                st.rerun()
-            else:
-                availability_credentials_dialog(
-                    available_clubs,
-                    selected_date,
-                    selected_time,
-                    int(duration_minutes),
-                )
-
-    for club_name, error in st.session_state.pop(
-        "availability_check_failures", {}
-    ).items():
-        st.error(f"Could not check {club_name}: {error}")
 
 def availability_search_explanation() -> None:
     with st.expander("How availability is checked"):
@@ -3035,18 +2994,17 @@ def main() -> None:
             selected_time,
         )
 
+    saved_credentials = st.session_state.get("availability_portal_credentials")
     with st.container(
         horizontal=True,
         gap="small",
         horizontal_alignment="left",
         vertical_alignment="bottom",
+        wrap=False,
     ):
         with st.container(width="content"):
-            booking_browser_controls(
+            check_availability_clicked = booking_browser_controls(
                 clubs,
-                selected_date,
-                selected_time,
-                int(duration_minutes),
                 st,
             )
         if st.button(
@@ -3064,27 +3022,6 @@ def main() -> None:
             "Court surface info",
             key="public_court_surface_info",
         )
-
-    saved_credentials = st.session_state.get("availability_portal_credentials")
-    with st.container(
-        horizontal=True,
-        gap="small",
-        horizontal_alignment="left",
-    ):
-        if st.session_state.get("home_address", "").strip():
-            if st.button(
-                "Forget street address",
-                key="forget_home_address",
-            ):
-                st.session_state["home_address"] = ""
-                st.session_state.pop("home_address_input", None)
-                st.session_state["route_origin"] = ""
-                st.session_state["route_results"] = {}
-                st.session_state["route_calculated_groups"] = []
-                st.session_state["route_group_feedback"] = {}
-                st.session_state["route_calculation_completed"] = False
-                st.session_state["route_address_consent"] = False
-                st.rerun()
         if saved_credentials:
             if st.button(
                 "Update credentials",
@@ -3104,6 +3041,63 @@ def main() -> None:
                 key="forget_booking_credentials",
             ):
                 st.session_state.pop("availability_portal_credentials", None)
+                st.rerun()
+
+    if check_availability_clicked:
+        available_clubs = [
+            item for item in clubs if item["name"] in BROWSER_CHECK_CLUBS
+        ]
+        if saved_credentials:
+            st.session_state["availability_check_started"] = True
+            try:
+                with st.spinner("Checking all public (non-member) clubs..."):
+                    run_availability_checks(
+                        available_clubs,
+                        selected_date,
+                        selected_time,
+                        int(duration_minutes),
+                        saved_credentials,
+                    )
+            except (
+                OSError,
+                RuntimeError,
+                TimeoutError,
+                subprocess.TimeoutExpired,
+            ) as error:
+                st.session_state["availability_check_failures"] = {
+                    "All configured clubs": str(error)
+                }
+            st.rerun()
+        else:
+            availability_credentials_dialog(
+                available_clubs,
+                selected_date,
+                selected_time,
+                int(duration_minutes),
+            )
+
+    for club_name, error in st.session_state.pop(
+        "availability_check_failures", {}
+    ).items():
+        st.error(f"Could not check {club_name}: {error}")
+    with st.container(
+        horizontal=True,
+        gap="small",
+        horizontal_alignment="left",
+    ):
+        if st.session_state.get("home_address", "").strip():
+            if st.button(
+                "Forget street address",
+                key="forget_home_address",
+            ):
+                st.session_state["home_address"] = ""
+                st.session_state.pop("home_address_input", None)
+                st.session_state["route_origin"] = ""
+                st.session_state["route_results"] = {}
+                st.session_state["route_calculated_groups"] = []
+                st.session_state["route_group_feedback"] = {}
+                st.session_state["route_calculation_completed"] = False
+                st.session_state["route_address_consent"] = False
                 st.rerun()
     if saved_credentials:
         st.caption("Booking-portal credentials are available for this app session.")
