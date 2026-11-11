@@ -1287,18 +1287,26 @@ def reject_optional_cookies(page: Any) -> None:
 
     if urlparse(page.url).hostname == "my.uscsport.nl":
         cookie_banner = page.locator("cookie-consent-banner")
-        try:
-            cookie_banner.wait_for(state="visible", timeout=5_000)
-        except PlaywrightTimeoutError:
-            return
         reject_button = cookie_banner.get_by_role(
             "button",
             name=re.compile(r"^Weigeren$", re.I),
         )
-        reject_button.wait_for(state="visible", timeout=5_000)
-        reject_button.click(timeout=5_000, force=True)
-        cookie_banner.wait_for(state="hidden", timeout=5_000)
-        return
+        for attempt in range(3):
+            try:
+                reject_button.wait_for(
+                    state="visible",
+                    timeout=5_000 if attempt == 0 else 1_000,
+                )
+            except PlaywrightTimeoutError:
+                return
+            reject_button.click(timeout=5_000, force=True)
+            reject_button.wait_for(state="hidden", timeout=5_000)
+            page.wait_for_timeout(500)
+            if not reject_button.is_visible():
+                return
+        raise RuntimeError(
+            "USC's cookie-consent banner remained visible after choosing Weigeren."
+        )
 
     reject_button = page.locator("#CybotCookiebotDialogBodyButtonDecline")
     if reject_button.count() and reject_button.first.is_visible():
