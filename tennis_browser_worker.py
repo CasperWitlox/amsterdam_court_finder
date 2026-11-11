@@ -923,6 +923,8 @@ def select_bookaball_court_type(page: Any, court_type: str) -> None:
 
 
 def check_bookaball_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any]:
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
     booking_url = validate_bookaball_url(command.get("url"))
     selected_date = date.fromisoformat(command["date"])
     start_time = str(command["start_time"])
@@ -948,14 +950,65 @@ def check_bookaball_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any
             else route.abort()
         ),
     )
+    api_responses: list[str] = []
+
+    def record_api_response(response: Any) -> None:
+        response_url = urlparse(response.url)
+        if (
+            response_url.hostname == parsed_url.hostname
+            and response_url.path
+            in {
+                "/api/locations",
+                "/api/bookings/create/STEP_LOCATION",
+            }
+        ):
+            api_responses.append(
+                f"{response_url.path} returned HTTP {response.status}"
+            )
+
     try:
         page = context.new_page()
+        page.on("response", record_api_response)
         page.set_default_timeout(12_000)
         page.set_default_navigation_timeout(45_000)
         page.goto(booking_url, wait_until="domcontentloaded", timeout=45_000)
         dismiss_bookaball_preferences(page)
         club_card = page.get_by_text("Amsterdam Racket Club", exact=True).first
-        club_card.wait_for(state="visible", timeout=25_000)
+        try:
+            club_card.wait_for(state="visible", timeout=25_000)
+        except PlaywrightTimeoutError:
+            api_summary = (
+                "; ".join(api_responses[-4:])
+                if api_responses
+                else "No response observed from Bookaball's club-selection APIs."
+            )
+            page_title = page.title()
+            page_path = urlparse(page.url).path
+            page_text = normalize_text(page.locator("body").inner_text()).casefold()
+            if any(
+                marker in page_text
+                for marker in (
+                    "cloudflare",
+                    "verify you are human",
+                    "checking your browser",
+                    "captcha",
+                )
+            ):
+                page_state = "The page appears to show a browser-verification challenge."
+            elif any(marker in page_text for marker in ("inloggen", "sign in", "log in")):
+                page_state = "The page appears to require sign-in."
+            else:
+                page_state = (
+                    f"Page title: {page_title or 'unknown'}; path: "
+                    f"{page_path or '/'}."
+                )
+            return {
+                "status": "Could not verify - Bookaball club list did not load",
+                "reason": (
+                    "The Amsterdam Racket Club card did not appear within 25 seconds. "
+                    f"{page_state} {api_summary}"
+                ),
+            }
         club_card.click()
         page.locator("#bookings-date-step-calendar-navigation-months").wait_for(
             state="visible",
