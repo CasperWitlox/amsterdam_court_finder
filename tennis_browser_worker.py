@@ -1296,7 +1296,7 @@ def reject_optional_cookies(page: Any) -> None:
             name=re.compile(r"^Weigeren$", re.I),
         )
         reject_button.wait_for(state="visible", timeout=5_000)
-        reject_button.click(timeout=5_000)
+        reject_button.click(timeout=5_000, force=True)
         cookie_banner.wait_for(state="hidden", timeout=5_000)
         return
 
@@ -1310,6 +1310,25 @@ def reject_optional_cookies(page: Any) -> None:
     if reject_button.count() and reject_button.first.is_visible():
         reject_button.first.click(timeout=5_000)
         page.wait_for_timeout(300)
+
+
+def click_usc_control(
+    page: Any,
+    control: Any,
+    *,
+    no_wait_after: bool = False,
+) -> None:
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    reject_optional_cookies(page)
+    try:
+        control.click(timeout=10_000, no_wait_after=no_wait_after)
+    except PlaywrightTimeoutError:
+        cookie_banner = page.locator("cookie-consent-banner")
+        if not cookie_banner.is_visible():
+            raise
+        reject_optional_cookies(page)
+        control.click(timeout=10_000, no_wait_after=no_wait_after)
 
 
 def dismiss_bookaball_preferences(page: Any) -> None:
@@ -1406,8 +1425,7 @@ def check_usc_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any]:
                     "status": "Could not verify - USC login option is missing",
                     "reason": "USC did not show the email-and-password sign-in option.",
                 }
-            reject_optional_cookies(page)
-            login_choice.first.click(timeout=10_000)
+            click_usc_control(page, login_choice.first)
 
         email_input = page.locator("#email")
         password_input = page.locator("#password")
@@ -1419,9 +1437,8 @@ def check_usc_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any]:
             "button",
             name=re.compile(r"e-mail en wachtwoord", re.I),
         ).last
-        reject_optional_cookies(page)
         log_worker_diagnostic("Submitting sign-in to USC.")
-        login_button.click(timeout=10_000, no_wait_after=True)
+        click_usc_control(page, login_button, no_wait_after=True)
         log_worker_diagnostic("USC accepted the sign-in form submission.")
         try:
             page.wait_for_url(
