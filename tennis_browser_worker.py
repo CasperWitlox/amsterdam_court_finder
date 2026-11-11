@@ -1271,6 +1271,23 @@ def inspect_usc_available_courts(labels: list[str]) -> list[dict[str, str]]:
 
 
 def reject_optional_cookies(page: Any) -> None:
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    if urlparse(page.url).hostname == "my.uscsport.nl":
+        cookie_banner = page.locator("cookie-consent-banner")
+        try:
+            cookie_banner.wait_for(state="visible", timeout=5_000)
+        except PlaywrightTimeoutError:
+            return
+        reject_button = cookie_banner.get_by_role(
+            "button",
+            name=re.compile(r"^Weigeren$", re.I),
+        )
+        reject_button.wait_for(state="visible", timeout=5_000)
+        reject_button.click(timeout=5_000)
+        cookie_banner.wait_for(state="hidden", timeout=5_000)
+        return
+
     reject_button = page.locator("#CybotCookiebotDialogBodyButtonDecline")
     if reject_button.count() and reject_button.first.is_visible():
         reject_button.first.click(timeout=5_000)

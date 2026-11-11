@@ -2238,6 +2238,16 @@ def run_availability_checks(
             try:
                 response = future.result()
                 responses[club["name"]] = response
+                if (
+                    club["name"] == "Amsterdam Racket Club"
+                    and str(response.get("status", "")).startswith(
+                        "Could not verify"
+                    )
+                ):
+                    failures[club["name"]] = response.get(
+                        "reason",
+                        "Bookaball did not provide enough information to verify this slot.",
+                    )
                 if "login failed" in str(response.get("status", "")).casefold():
                     failures[club["name"]] = response.get(
                         "reason",
