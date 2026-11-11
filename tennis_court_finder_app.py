@@ -2294,9 +2294,12 @@ def availability_credentials_dialog(
     selected_time: time,
     duration_minutes: int,
 ) -> None:
-    st.write(
-        "Amstelpark and Frans Otten use the same booking-portal credentials. "
-        "USC uses a separate account; enter its email and password as well."
+    st.markdown(
+        "Register using the same booking-portal credentials for "
+        "[Amstelpark](https://amstelpark.baanreserveren.nl/) and "
+        "[Frans Otten](https://fransotten.baanreserveren.nl/). "
+        "USC registration requires separate credentials; enter its email "
+        "and password as well."
     )
     st.caption(
         "Credentials are kept in this app session's memory so you can check "
@@ -2445,8 +2448,10 @@ def availability_search_explanation() -> None:
               - PARK Tennis offers public court booking; its booking flow is not
                 currently checked automatically.
             - **Sign-in required**
-              - The availability check signs in to Amstelpark and Frans Otten with
-                their shared portal credentials, and to USC with its separate account.
+              - Register using the same booking-portal credentials for
+                [Amstelpark](https://amstelpark.baanreserveren.nl/) and
+                [Frans Otten](https://fransotten.baanreserveren.nl/). USC requires
+                separate credentials.
               - Credentials can be reused during this app session. Browser cookies are
                 temporary and are discarded after each check.
             - **What the checker does**
@@ -3034,7 +3039,7 @@ def main() -> None:
         horizontal_alignment="left",
         vertical_alignment="bottom",
     ):
-        with st.container():
+        with st.container(width="content"):
             booking_browser_controls(
                 clubs,
                 selected_date,
@@ -3057,6 +3062,13 @@ def main() -> None:
             "Court surface info",
             key="public_court_surface_info",
         )
+
+    saved_credentials = st.session_state.get("availability_portal_credentials")
+    with st.container(
+        horizontal=True,
+        gap="small",
+        horizontal_alignment="left",
+    ):
         if st.session_state.get("home_address", "").strip():
             if st.button(
                 "Forget street address",
@@ -3071,7 +3083,6 @@ def main() -> None:
                 st.session_state["route_calculation_completed"] = False
                 st.session_state["route_address_consent"] = False
                 st.rerun()
-        saved_credentials = st.session_state.get("availability_portal_credentials")
         if saved_credentials:
             if st.button(
                 "Update credentials",
