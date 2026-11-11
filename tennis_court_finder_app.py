@@ -2298,7 +2298,8 @@ def availability_credentials_dialog(
         "Register using the same booking-portal credentials for "
         "[Amstelpark](https://amstelpark.baanreserveren.nl/) and "
         "[Frans Otten](https://fransotten.baanreserveren.nl/). "
-        "USC registration requires separate credentials; enter its email "
+        "[USC](https://my.uscsport.nl/pages/login) registration requires "
+        "separate credentials; enter its email "
         "and password as well."
     )
     st.caption(
@@ -2450,8 +2451,9 @@ def availability_search_explanation() -> None:
             - **Sign-in required**
               - Register using the same booking-portal credentials for
                 [Amstelpark](https://amstelpark.baanreserveren.nl/) and
-                [Frans Otten](https://fransotten.baanreserveren.nl/). USC requires
-                separate credentials.
+                [Frans Otten](https://fransotten.baanreserveren.nl/).
+                [USC](https://my.uscsport.nl/pages/login) requires separate
+                credentials.
               - Credentials can be reused during this app session. Browser cookies are
                 temporary and are discarded after each check.
             - **What the checker does**
