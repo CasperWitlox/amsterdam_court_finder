@@ -995,19 +995,31 @@ def check_bookaball_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any
                 )
             ):
                 page_state = "The page appears to show a browser-verification challenge."
+                status = (
+                    "Could not verify - Bookaball cloud browser verification blocked"
+                )
             elif any(marker in page_text for marker in ("inloggen", "sign in", "log in")):
                 page_state = "The page appears to require sign-in."
+                status = "Could not verify - Bookaball sign-in required"
             else:
                 page_state = (
                     f"Page title: {page_title or 'unknown'}; path: "
                     f"{page_path or '/'}."
                 )
+                status = "Could not verify - Bookaball club list did not load"
+            reason = (
+                "The Amsterdam Racket Club card did not appear within 25 seconds. "
+                f"{page_state} {api_summary}"
+            )
+            if status.endswith("browser verification blocked"):
+                reason += (
+                    " Automated checks cannot complete a site verification "
+                    "challenge; use the booking page manually or ask Bookaball to "
+                    "provide an approved API or allowlist for this app."
+                )
             return {
-                "status": "Could not verify - Bookaball club list did not load",
-                "reason": (
-                    "The Amsterdam Racket Club card did not appear within 25 seconds. "
-                    f"{page_state} {api_summary}"
-                ),
+                "status": status,
+                "reason": reason,
             }
         club_card.click()
         page.locator("#bookings-date-step-calendar-navigation-months").wait_for(
@@ -1394,6 +1406,7 @@ def check_usc_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any]:
                     "status": "Could not verify - USC login option is missing",
                     "reason": "USC did not show the email-and-password sign-in option.",
                 }
+            reject_optional_cookies(page)
             login_choice.first.click(timeout=10_000)
 
         email_input = page.locator("#email")
@@ -1406,6 +1419,7 @@ def check_usc_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any]:
             "button",
             name=re.compile(r"e-mail en wachtwoord", re.I),
         ).last
+        reject_optional_cookies(page)
         log_worker_diagnostic("Submitting sign-in to USC.")
         login_button.click(timeout=10_000, no_wait_after=True)
         log_worker_diagnostic("USC accepted the sign-in form submission.")
