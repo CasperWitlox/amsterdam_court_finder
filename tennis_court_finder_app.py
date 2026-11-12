@@ -2679,7 +2679,12 @@ def save_home_address_input() -> None:
     st.session_state["home_address"] = st.session_state["home_address_input"].strip()
 
 
-def clubs_for_access_group(clubs: list[dict[str, Any]], group: str) -> list[dict[str, Any]]:
+def clubs_for_access_group(
+    clubs: list[dict[str, Any]],
+    group: str,
+) -> list[dict[str, Any]]:
+    if group == "membership_options":
+        return clubs
     return [
         club
         for club in clubs
@@ -2747,6 +2752,7 @@ def calculate_route_group(
                 "members": "members-only clubs",
                 "single_courts": "single not-for-rent courts",
                 "public": "public clubs",
+                "membership_options": "clubs across both tables",
             }.get(group, "clubs")
             feedback = {
                 "kind": "success",
@@ -2781,10 +2787,11 @@ def cycling_time_setup_dialog(
         "members": "members-only clubs",
         "single_courts": "single not-for-rent courts",
         "public": "public clubs",
+        "membership_options": "all clubs in the public and membership tables",
     }.get(group, "clubs")
     st.markdown(
         "Your starting address is shared by all tables. This button will "
-        f"calculate cycling times for the {target_label} only."
+        f"calculate cycling times for {target_label}."
     )
     if "home_address_input" not in st.session_state:
         st.session_state["home_address_input"] = st.session_state.get(
@@ -2882,6 +2889,7 @@ def apply_dashboard_background() -> None:
           .st-key-calculate_single_court_routes button,
           .st-key-calculate_public_routes_from_dialog button,
           .st-key-calculate_members_routes_from_dialog button,
+          .st-key-calculate_membership_options_routes_from_dialog button,
           .st-key-calculate_single_courts_routes_from_dialog button {{
             background-color: #173B67;
             border-color: #173B67;
@@ -2892,6 +2900,7 @@ def apply_dashboard_background() -> None:
           .st-key-calculate_single_court_routes button:hover,
           .st-key-calculate_public_routes_from_dialog button:hover,
           .st-key-calculate_members_routes_from_dialog button:hover,
+          .st-key-calculate_membership_options_routes_from_dialog button:hover,
           .st-key-calculate_single_courts_routes_from_dialog button:hover {{
             background-color: #102B4C;
             border-color: #102B4C;
@@ -3229,17 +3238,25 @@ def main() -> None:
             origin = st.session_state.get("home_address", "").strip()
             api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
             if origin and st.session_state.get("route_address_consent") and api_key:
-                with st.spinner("Calculating members-only cycling times..."):
-                    calculate_route_group(clubs, "members", origin, api_key)
+                with st.spinner("Calculating cycling times for both tables..."):
+                    calculate_route_group(
+                        clubs,
+                        "membership_options",
+                        origin,
+                        api_key,
+                    )
             else:
-                cycling_time_setup_dialog(clubs, "members")
+                cycling_time_setup_dialog(clubs, "membership_options")
         if st.button(
             "Court surface info",
             key="membership_court_surface_info",
         ):
             show_court_surface_info(members_only_clubs)
 
-    if "members" in st.session_state["route_calculated_groups"]:
+    if any(
+        group in st.session_state["route_calculated_groups"]
+        for group in ("members", "membership_options")
+    ):
         members_only_clubs = members_only_clubs.assign(
             _cycling_minutes=members_only_clubs["Cycling time"].map(
                 lambda value: int(match.group(1))
@@ -3275,7 +3292,9 @@ def main() -> None:
         ).sort_values("_membership_price", kind="stable").drop(
             columns="_membership_price"
         )
-    members_feedback = st.session_state["route_group_feedback"].get("members")
+    members_feedback = st.session_state["route_group_feedback"].get(
+        "membership_options"
+    ) or st.session_state["route_group_feedback"].get("members")
     if members_feedback:
         if members_feedback["kind"] == "success":
             st.success(members_feedback["message"])
