@@ -847,7 +847,7 @@ SENIOR_MEMBERSHIP_PRICES = {
     "TOB Tennisvereniging": (
         "€210.00/year (2027 provisional), senior 18+"
     ),
-    "TV Osdorp": "€—/year (not published)",
+    "TV Osdorp": "Not published",
     "Tennisclub IJburg": (
         "€295.00/year"
     ),
@@ -856,20 +856,148 @@ SENIOR_MEMBERSHIP_PRICES = {
     ),
     "Tennisvereniging PST": "€125.00/year",
     "De Meer tennis": "€199.00/year",
-    "Tennisclub Kattenlaan": "€—/year (not published)",
+    "Tennisclub Kattenlaan": "Not published",
     "TV Linnaeushof": "€330.00/year",
     "SV Club Triaz": "€126.00/year",
-    "VVGA Tennis Club": "€—/year (not published)",
+    "VVGA Tennis Club": "Not published",
     "Joy Jaagpad tennis": "€256.00/year",
     "De Algemene": "€210.00/year",
     "T.C. Ijsbaanpad": "€220.00/year",
     "T.C. Amsterdam": "€227.00/year (senior from age 26)",
-    "Tennis in West": "€—/year (not published)",
-    "Tennis- en padelvereniging Badhoevedorp": "€—/year (not published)",
+    "Tennis in West": "Not published",
+    "Tennis- en padelvereniging Badhoevedorp": "Not published",
     "Tennisvereniging Lucky Strike": (
         "€205.00/year"
     ),
     "Tennisvereniging Ouderkerk": "€175.00–€180.00/year",
+}
+MEMBERSHIP_CAPACITY_INFO = {
+    "TOB Tennisvereniging": {
+        "members": "170",
+        "courts": "5",
+        "ratio": "34",
+        "notes": "Includes 2 indoor and 3 outdoor courts; located in Noord.",
+    },
+    "Amsterdamse Tennis Club Kadoelen": {
+        "members": "600",
+        "courts": "12",
+        "ratio": "50",
+        "notes": "11 of 12 courts are lit; open year-round.",
+    },
+    "TV Osdorp": {
+        "members": "600",
+        "courts": "10",
+        "ratio": "60",
+        "notes": "Also features an air dome (indoor bubble) during winter.",
+    },
+    "Tennisvereniging A.M.V.J.": {
+        "members": "500–600",
+        "courts": "8",
+        "ratio": "63–75",
+        "notes": "Only 2 of 8 courts are playable during winter.",
+    },
+    "Tennisclub IJburg": {
+        "members": "1,100",
+        "courts": "13",
+        "ratio": "85",
+        "notes": "High number of league players (over 50 competitive teams).",
+    },
+    "De Algemene": {
+        "members": "570",
+        "courts": "6",
+        "ratio": "95",
+        "notes": "All-weather courts allow year-round outdoor play.",
+    },
+    "TV Linnaeushof": {
+        "members": "290–300",
+        "courts": "3",
+        "ratio": "97–100",
+        "notes": "Waiting list for regular senior members.",
+    },
+    "T.C. Amsterdam": {
+        "members": "600",
+        "courts": "6",
+        "ratio": "100",
+        "notes": "Membership cap at 600; park is open only April–October.",
+    },
+    "A.T.C. Sloterplas": {
+        "members": "~1,000",
+        "courts": "10",
+        "ratio": "100",
+        "notes": "At most 2 courts are used simultaneously for tennis lessons.",
+    },
+    "De Meer tennis": {
+        "members": ">900",
+        "courts": "8",
+        "ratio": "113+",
+        "notes": "Waiting list of about 2.5 years; open March–November.",
+    },
+    "VVGA Tennis Club": {
+        "members": "800",
+        "courts": "7",
+        "ratio": "114",
+        "notes": "Senior membership is frozen; only off-peak daytime and youth "
+        "members are accepted.",
+    },
+    "Tennis- en padelvereniging Badhoevedorp": {
+        "members": "1,510*",
+        "courts": "13",
+        "ratio": "116*",
+        "notes": "*1,510 active playing members (1,849 total); also has 3 padel "
+        "courts.",
+    },
+    "T.C. Ijsbaanpad": {
+        "members": "700",
+        "courts": "6",
+        "ratio": "117",
+        "notes": "All-weather courts allow year-round outdoor play.",
+    },
+    "Tennisvereniging Ouderkerk": {
+        "members": "1,100",
+        "courts": "9",
+        "ratio": "122",
+        "notes": "Senior waiting list; off-peak daytime membership is available "
+        "immediately.",
+    },
+    "Joy Jaagpad tennis": {
+        "members": "1,750–1,900",
+        "courts": "15",
+        "ratio": "117–127",
+        "notes": "Waiting list; 14 of 15 courts are lit.",
+    },
+    "Tennisvereniging PST": {
+        "members": "900",
+        "courts": "5",
+        "ratio": "180",
+        "notes": "Shares 3 of 5 courts with other sports clubs; 2 courts are "
+        "dedicated to tennis.",
+    },
+    "Tennisclub Kattenlaan": {
+        "members": "1,000–1,100",
+        "courts": "5",
+        "ratio": "200–220",
+        "notes": "Summer season only; courts are commercially operated during "
+        "winter.",
+    },
+    "Tennis in West": {
+        "members": "Unknown",
+        "courts": "5",
+        "ratio": "Unknown",
+        "notes": "Newer club with a waiting list; public membership numbers are "
+        "unavailable.",
+    },
+    "SV Club Triaz": {
+        "members": "Unknown",
+        "courts": "4–5",
+        "ratio": "Unknown",
+        "notes": "Small-scale club; shares fields in part with korfball.",
+    },
+    "Tennisvereniging Lucky Strike": {
+        "members": "Unknown",
+        "courts": "7",
+        "ratio": "Unknown",
+        "notes": "Located in Zwanenburg; 6 of 7 courts are lit.",
+    },
 }
 SENIOR_MEMBERSHIP_OTHER_INFO = {
     "Tennisvereniging PST": (
@@ -1545,9 +1673,6 @@ def availability_label(
     availability_results: dict[str, dict[str, Any]],
     requested_slot: str,
 ) -> str:
-    if booking_slot_is_too_early(club["name"], requested_slot):
-        return "Too early to check"
-
     result = availability_results.get(club["name"], {})
     if result.get("slot_key") == requested_slot:
         status = str(result["status"])
@@ -1722,7 +1847,7 @@ def display_clubs(
                         "membership_price"
                     )
                     or club.get("membership_price")
-                    or "€—/year (not published)"
+                    or "Not published"
                 ),
                 "Court surface": club.get("court_type") or "Not listed",
                 "Introducé allowed?": INTRODUCE_ALLOWED.get(
@@ -1764,6 +1889,23 @@ def append_membership_other_info(existing: Any, membership_note: str) -> str:
     return " ".join(notes) if notes else "Not listed"
 
 
+def membership_table_other_info(club_name: str, existing: Any) -> str:
+    notes = [
+        SENIOR_MEMBERSHIP_OTHER_INFO.get(club_name, ""),
+        MEMBERSHIP_CAPACITY_INFO.get(club_name, {}).get("notes", ""),
+    ]
+    return append_membership_other_info(
+        existing,
+        " ".join(note for note in notes if note),
+    )
+
+
+def membership_capacity_value(info: Any, key: str) -> str:
+    if not isinstance(info, dict):
+        return "Not published"
+    return info.get(key, "Not published")
+
+
 def style_club_rows(
     frame: pd.DataFrame,
     recommended_environment: str | None = None,
@@ -1773,11 +1915,7 @@ def style_club_rows(
         availability = str(row.get("Availability", ""))
         waiting_list = str(row.get("Waiting list", "")).strip().casefold()
         has_waiting_list_status = waiting_list.startswith(("yes", "no"))
-        if waiting_list.startswith("no"):
-            row_color_value = "background-color: #E8F4E7"
-        elif waiting_list.startswith("yes"):
-            row_color_value = "background-color: #FCE9E7"
-        elif (
+        if (
             all_rows_gray
             or str(row.get("Booking access", "")).casefold() == "members only"
             or availability.startswith("Could not verify")
@@ -1787,6 +1925,10 @@ def style_club_rows(
             or availability == "Only through phone"
         ):
             row_color_value = "background-color: #EEEEEE"
+        elif waiting_list.startswith("no"):
+            row_color_value = "background-color: #E8F4E7"
+        elif waiting_list.startswith("yes"):
+            row_color_value = "background-color: #FCE9E7"
         elif availability.startswith("✅ Available"):
             row_color_value = "background-color: #E8F4E7"
         elif availability.startswith("Unavailable") or availability == "Too early to check":
@@ -1835,6 +1977,24 @@ def style_club_rows(
                     f"{row_color_value}; color: {price_color}; font-weight: bold"
                     if has_waiting_list_status
                     else f"color: {price_color}; font-weight: bold"
+                )
+        if "Ratio (members/court)" in row.index:
+            ratio_match = re.search(
+                r"\d+",
+                str(row["Ratio (members/court)"]),
+            )
+            if ratio_match:
+                ratio = int(ratio_match.group())
+                ratio_background, ratio_text = (
+                    ("#DDF2DF", "#287A32")
+                    if ratio <= 75
+                    else ("#FFF1C7", "#8A6500")
+                    if ratio <= 150
+                    else ("#F8DEDA", "#A93226")
+                )
+                colors[row.index.get_loc("Ratio (members/court)")] = (
+                    f"background-color: {ratio_background}; "
+                    f"color: {ratio_text}; font-weight: bold"
                 )
         court_types = str(row.get("Available type", "")).casefold()
         has_outdoor = "outdoor" in court_types
@@ -2252,15 +2412,27 @@ def run_availability_checks(
     requested_slot = booking_slot_key(selected_date, selected_time, duration_minutes)
     responses: dict[str, dict[str, Any]] = {}
     failures: dict[str, str] = {}
+    early_clubs = [
+        club
+        for club in available_clubs
+        if booking_slot_is_too_early(club["name"], requested_slot)
+    ]
+    for club in early_clubs:
+        responses[club["name"]] = {
+            "status": "Too early to check",
+            "reason": "The selected date is outside this club's booking window.",
+        }
     ordered_clubs = sorted(
         (
             club
             for club in available_clubs
-            if not booking_slot_is_too_early(club["name"], requested_slot)
+            if club not in early_clubs
         ),
         key=lambda club: club["name"] not in CREDENTIAL_CHECK_CLUBS,
     )
-    with ThreadPoolExecutor(max_workers=min(len(ordered_clubs), 2)) as executor:
+    with ThreadPoolExecutor(
+        max_workers=max(1, min(len(ordered_clubs), 2))
+    ) as executor:
         futures = {
             executor.submit(
                 check_club_availability,
@@ -3244,11 +3416,28 @@ def main() -> None:
         ignore_index=True,
     )
     members_only_clubs["Other info"] = members_only_clubs.apply(
-        lambda row: append_membership_other_info(
+        lambda row: membership_table_other_info(
+            row["Club"],
             row["Other info"],
-            SENIOR_MEMBERSHIP_OTHER_INFO.get(row["Club"], ""),
         ),
         axis=1,
+    )
+    capacity_info = members_only_clubs["Club"].map(MEMBERSHIP_CAPACITY_INFO)
+    insertion_index = members_only_clubs.columns.get_loc("Membership price") + 1
+    members_only_clubs.insert(
+        insertion_index,
+        "Members (approx.)",
+        capacity_info.map(lambda info: membership_capacity_value(info, "members")),
+    )
+    members_only_clubs.insert(
+        insertion_index + 1,
+        "Courts",
+        capacity_info.map(lambda info: membership_capacity_value(info, "courts")),
+    )
+    members_only_clubs.insert(
+        insertion_index + 2,
+        "Ratio (members/court)",
+        capacity_info.map(lambda info: membership_capacity_value(info, "ratio")),
     )
     if show_public_surface:
         show_court_surface_info(public_clubs)
@@ -3362,6 +3551,10 @@ def main() -> None:
         "Membership-price text: green ≤ €200, amber €201–€275, red > €275; "
         "cycling-time text retains its travel-time color coding."
     )
+    st.caption(
+        "Members per court: green ≤75, yellow 76–150, red >150. "
+        "Club membership and court figures are approximate where noted."
+    )
     st.dataframe(
         style_club_rows(members_only_clubs),
         hide_index=True,
@@ -3369,6 +3562,13 @@ def main() -> None:
         column_config={
             "Club site": st.column_config.LinkColumn(
                 "Club site", display_text="Open club site"
+            ),
+            "Ratio (members/court)": st.column_config.TextColumn(
+                "Ratio (members/court)",
+                help=(
+                    "Approximate members per tennis court. Green ≤75, yellow "
+                    "76–150, red >150; ranges use their lower value for coloring."
+                ),
             ),
         },
     )
