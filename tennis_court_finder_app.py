@@ -3681,6 +3681,28 @@ def main() -> None:
         "Looking for a longer-term commitment? Explore these club senior "
         "membership options below."
     )
+    if st.session_state.get("membership_table_sort") == "Default order":
+        st.session_state["membership_table_sort"] = (
+            "Senior membership price (ascending)"
+        )
+    membership_sort_options = {
+        "Senior membership price (ascending)": (
+            "Senior membership price",
+            True,
+        ),
+        "Senior membership price (descending)": (
+            "Senior membership price",
+            False,
+        ),
+        "Members (approx.) - ascending": ("Members (approx.)", True),
+        "Members (approx.) - descending": ("Members (approx.)", False),
+        "Courts - ascending": ("Courts", True),
+        "Courts - descending": ("Courts", False),
+        "Ratio (members/court) - ascending": ("Ratio (members/court)", True),
+        "Ratio (members/court) - descending": ("Ratio (members/court)", False),
+        "Introducé price - ascending": ("Introducé price", True),
+        "Introducé price - descending": ("Introducé price", False),
+    }
     with st.container(horizontal=True, gap="small", vertical_alignment="bottom"):
         if st.button(
             "Calculate cycling times",
@@ -3703,6 +3725,20 @@ def main() -> None:
             key="membership_court_surface_info",
         ):
             show_court_surface_info(members_only_clubs)
+        with st.popover(
+            "Sort table by",
+            type="secondary",
+            key="membership_table_sort_popover",
+        ):
+            membership_sort = st.selectbox(
+                "Sort order",
+                list(membership_sort_options),
+                key="membership_table_sort",
+                help=(
+                    "Ranges use their lower value, and entries without a "
+                    "number are placed last."
+                ),
+            )
 
     if any(
         group in st.session_state["route_calculated_groups"]
@@ -3767,48 +3803,17 @@ def main() -> None:
         "The Dutch tennis federation (KNLTB) uses 60 to 90 members per lit "
         "outdoor court as a healthy guideline."
     )
-    membership_sort = st.selectbox(
-        "Sort table by",
-        [
-            "Default order",
-            "Members (approx.) - ascending",
-            "Members (approx.) - descending",
-            "Courts - ascending",
-            "Courts - descending",
-            "Ratio (members/court) - ascending",
-            "Ratio (members/court) - descending",
-            "Introducé price - ascending",
-            "Introducé price - descending",
-        ],
-        key="membership_table_sort",
-        help=(
-            "Numeric sorts use the lower value for ranges and put entries "
-            "without a numeric value last. Clicking a table header sorts its "
-            "displayed text."
-        ),
-    )
-    membership_sort_options = {
-        "Members (approx.) - ascending": ("Members (approx.)", True),
-        "Members (approx.) - descending": ("Members (approx.)", False),
-        "Courts - ascending": ("Courts", True),
-        "Courts - descending": ("Courts", False),
-        "Ratio (members/court) - ascending": ("Ratio (members/court)", True),
-        "Ratio (members/court) - descending": ("Ratio (members/court)", False),
-        "Introducé price - ascending": ("Introducé price", True),
-        "Introducé price - descending": ("Introducé price", False),
-    }
-    if membership_sort in membership_sort_options:
-        sort_column, ascending = membership_sort_options[membership_sort]
-        members_only_clubs = members_only_clubs.assign(
-            _numeric_sort=members_only_clubs[sort_column].map(
-                membership_numeric_sort_value
-            )
-        ).sort_values(
-            "_numeric_sort",
-            ascending=ascending,
-            na_position="last",
-            kind="stable",
-        ).drop(columns="_numeric_sort")
+    sort_column, ascending = membership_sort_options[membership_sort]
+    members_only_clubs = members_only_clubs.assign(
+        _numeric_sort=members_only_clubs[sort_column].map(
+            membership_numeric_sort_value
+        )
+    ).sort_values(
+        "_numeric_sort",
+        ascending=ascending,
+        na_position="last",
+        kind="stable",
+    ).drop(columns="_numeric_sort")
     st.dataframe(
         style_club_rows(members_only_clubs),
         hide_index=True,
