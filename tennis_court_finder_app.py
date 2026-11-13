@@ -3485,6 +3485,20 @@ def main() -> None:
             ):
                 st.session_state.pop("availability_portal_credentials", None)
                 st.rerun()
+        if st.session_state.get("home_address", "").strip():
+            if st.button(
+                "Forget street address",
+                key="forget_home_address",
+            ):
+                st.session_state["home_address"] = ""
+                st.session_state.pop("home_address_input", None)
+                st.session_state["route_origin"] = ""
+                st.session_state["route_results"] = {}
+                st.session_state["route_calculated_groups"] = []
+                st.session_state["route_group_feedback"] = {}
+                st.session_state["route_calculation_completed"] = False
+                st.session_state["route_address_consent"] = False
+                st.rerun()
 
     if check_availability_clicked:
         available_clubs = [
@@ -3523,25 +3537,6 @@ def main() -> None:
         "availability_check_failures", {}
     ).items():
         st.error(f"Could not check {club_name}: {error}")
-    with st.container(
-        horizontal=True,
-        gap="small",
-        horizontal_alignment="left",
-    ):
-        if st.session_state.get("home_address", "").strip():
-            if st.button(
-                "Forget street address",
-                key="forget_home_address",
-            ):
-                st.session_state["home_address"] = ""
-                st.session_state.pop("home_address_input", None)
-                st.session_state["route_origin"] = ""
-                st.session_state["route_results"] = {}
-                st.session_state["route_calculated_groups"] = []
-                st.session_state["route_group_feedback"] = {}
-                st.session_state["route_calculation_completed"] = False
-                st.session_state["route_address_consent"] = False
-                st.rerun()
     if saved_credentials:
         st.caption("Booking-portal credentials are available for this app session.")
 
