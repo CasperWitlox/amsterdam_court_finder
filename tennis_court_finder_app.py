@@ -2100,6 +2100,19 @@ def membership_capacity_value(info: Any, key: str) -> str:
     return info.get(key, "Not published")
 
 
+def membership_numeric_sort_value(value: Any) -> float:
+    match = re.search(r"\d(?:[\d,.]*\d)?", str(value))
+    if not match:
+        return float("nan")
+    number = match.group()
+    if "," in number:
+        if "." in number or len(number.rsplit(",", 1)[-1]) == 3:
+            number = number.replace(",", "")
+        else:
+            number = number.replace(",", ".")
+    return float(number)
+
+
 def style_club_rows(
     frame: pd.DataFrame,
     recommended_environment: str | None = None,
@@ -3754,6 +3767,48 @@ def main() -> None:
         "The Dutch tennis federation (KNLTB) uses 60 to 90 members per lit "
         "outdoor court as a healthy guideline."
     )
+    membership_sort = st.selectbox(
+        "Sort table by",
+        [
+            "Default order",
+            "Members (approx.) - ascending",
+            "Members (approx.) - descending",
+            "Courts - ascending",
+            "Courts - descending",
+            "Ratio (members/court) - ascending",
+            "Ratio (members/court) - descending",
+            "Introducé price - ascending",
+            "Introducé price - descending",
+        ],
+        key="membership_table_sort",
+        help=(
+            "Numeric sorts use the lower value for ranges and put entries "
+            "without a numeric value last. Clicking a table header sorts its "
+            "displayed text."
+        ),
+    )
+    membership_sort_options = {
+        "Members (approx.) - ascending": ("Members (approx.)", True),
+        "Members (approx.) - descending": ("Members (approx.)", False),
+        "Courts - ascending": ("Courts", True),
+        "Courts - descending": ("Courts", False),
+        "Ratio (members/court) - ascending": ("Ratio (members/court)", True),
+        "Ratio (members/court) - descending": ("Ratio (members/court)", False),
+        "Introducé price - ascending": ("Introducé price", True),
+        "Introducé price - descending": ("Introducé price", False),
+    }
+    if membership_sort in membership_sort_options:
+        sort_column, ascending = membership_sort_options[membership_sort]
+        members_only_clubs = members_only_clubs.assign(
+            _numeric_sort=members_only_clubs[sort_column].map(
+                membership_numeric_sort_value
+            )
+        ).sort_values(
+            "_numeric_sort",
+            ascending=ascending,
+            na_position="last",
+            kind="stable",
+        ).drop(columns="_numeric_sort")
     st.dataframe(
         style_club_rows(members_only_clubs),
         hide_index=True,
@@ -3766,7 +3821,29 @@ def main() -> None:
                 "Ratio (members/court)",
                 help=(
                     "Approximate members per tennis court. Green ≤75, yellow "
-                    "76–150, red >150; ranges use their lower value for coloring."
+                    "76–150, red >150; ranges use their lower value for coloring. "
+                    "Use Sort table by for numeric sorting."
+                ),
+            ),
+            "Members (approx.)": st.column_config.TextColumn(
+                "Members (approx.)",
+                help=(
+                    "Use the Sort table by control for numeric sorting; "
+                    "ranges use their lower value."
+                ),
+            ),
+            "Courts": st.column_config.TextColumn(
+                "Courts",
+                help=(
+                    "Use the Sort table by control for numeric sorting; "
+                    "ranges use their lower value."
+                ),
+            ),
+            "Introducé price": st.column_config.TextColumn(
+                "Introducé price",
+                help=(
+                    "Use Sort table by for numeric sorting; price ranges use "
+                    "their lower amount."
                 ),
             ),
         },
