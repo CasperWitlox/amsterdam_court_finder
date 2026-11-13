@@ -843,58 +843,88 @@ CLUB_DATA_CORRECTIONS = {
 }
 SENIOR_MEMBERSHIP_PRICES = {
     "Tennisvereniging A.M.V.J.": "€257.50/year (2026), senior 18+",
-    "Amsterdamse Tennis Club Kadoelen": "€185/year (2026), born 2006 or earlier",
+    "Amsterdamse Tennis Club Kadoelen": "€185.00/year",
     "TOB Tennisvereniging": (
-        "€210/year (2027 provisional), senior 18+; 2026 rate not published"
+        "€210.00/year (2027 provisional), senior 18+"
     ),
-    "TV Osdorp": "€247/year (2026), born 2002 or earlier",
+    "TV Osdorp": "€—/year (not published)",
     "Tennisclub IJburg": (
-        "€295/year (2026), senior 18+; refundable €75 annual bar deposit"
+        "€295.00/year"
     ),
     "A.T.C. Sloterplas": (
-        "€260/year (2026), adult rate; €265/year listed for 2027"
+        "€260.00/year (2026); €265.00/year in 2027"
     ),
+    "Tennisvereniging PST": "€125.00/year",
+    "De Meer tennis": "€199.00/year",
+    "Tennisclub Kattenlaan": "€—/year (not published)",
+    "TV Linnaeushof": "€330.00/year",
+    "SV Club Triaz": "€126.00/year",
+    "VVGA Tennis Club": "€—/year (not published)",
+    "Joy Jaagpad tennis": "€256.00/year",
+    "De Algemene": "€210.00/year",
+    "T.C. Ijsbaanpad": "€220.00/year",
+    "T.C. Amsterdam": "€227.00/year (senior from age 26)",
+    "Tennis in West": "€—/year (not published)",
+    "Tennis- en padelvereniging Badhoevedorp": "€—/year (not published)",
+    "Tennisvereniging Lucky Strike": (
+        "€205.00/year"
+    ),
+    "Tennisvereniging Ouderkerk": "€175.00–€180.00/year",
+}
+SENIOR_MEMBERSHIP_OTHER_INFO = {
     "Tennisvereniging PST": (
-        "€125/year (last published 2025), senior 18+; current fee not published"
+        "Residency zone applies; lottery enrollment is December 1–31."
     ),
-    "De Meer tennis": (
-        "€199/year (last published 2025), senior full member 18+; "
-        "current fee not published"
+    "SV Club Triaz": "€10 refundable key deposit.",
+    "Tennisvereniging Ouderkerk": (
+        "Young senior (18–25) rate is €110/year; €50 signup fee."
     ),
-    "Tennisclub Kattenlaan": (
-        "€435 (Total membership); €325 (Day/Weekend membership); "
-        "year not specified"
+    "Amsterdamse Tennis Club Kadoelen": (
+        "Young senior (18–19) rate is €140/year; €25 signup/tag fee."
     ),
-    "TV Linnaeushof": (
-        "€350/year, full membership; senior age category not specified"
-    ),
-    "SV Club Triaz": "€126; billing period and senior category not specified",
-    "VVGA Tennis Club": "€248/year (2026), born 2001 or earlier",
-    "Joy Jaagpad tennis": (
-        "€256/year, senior 18+ on 1 January; fee year not specified"
-    ),
-    "De Algemene": (
-        "€210/year, full membership; senior age category not specified"
+    "De Meer tennis": "Waitlist is about 2.5 years; €25 waitlist/signup fee.",
+    "Tennisvereniging Lucky Strike": "No waitlist; €25 signup fee.",
+    "De Algemene": "Stadspas discount available (€165 full).",
+    "TOB Tennisvereniging": (
+        "€15 signup fee; free for members aged 55+ with Stadspas."
     ),
     "T.C. Ijsbaanpad": (
-        "€220/year, complete membership; senior age category not specified"
+        "Full waitlist is closed; €50 refundable bar deposit."
     ),
     "T.C. Amsterdam": (
-        "€227/year (2026), senior from age 26; plus €40 one-time entrance fee; "
-        "subject to ALV ratification"
+        "Student rate is €148/year; €40 one-time entry fee."
+    ),
+    "Joy Jaagpad tennis": "Waitlist is about 1.5 years; €16 signup fee.",
+    "Tennisvereniging A.M.V.J.": (
+        "Student rate is €173.50/year; €27.50 entry fee."
+    ),
+    "A.T.C. Sloterplas": (
+        "Waitlist is active; €20 signup fee (€25 in 2027)."
+    ),
+    "Tennisclub IJburg": (
+        "€75 refundable bar deposit and €50 signup fee."
+    ),
+    "TV Linnaeushof": "Full membership is closed; daytime membership is open.",
+    "Tennisclub Kattenlaan": (
+        "€27.50 one-time registration fee; current senior annual fee is not "
+        "publicly posted."
+    ),
+    "VVGA Tennis Club": (
+        "Membership stop and waitlist for full senior tennis membership; "
+        "daytime membership is open. Exact fees are restricted to the member portal."
     ),
     "Tennis in West": (
-        "€220/year (2026); €240/year listed for 2027; "
-        "senior age category not specified"
+        "Operates five gravel courts at Sportpark Multatuli and has active "
+        "registration forms; its standard annual senior tariff is not published."
+    ),
+    "TV Osdorp": (
+        "No waitlist, registration fee, or mandatory bar duty; exact senior "
+        "tariffs are shown only in the signup workflow."
     ),
     "Tennis- en padelvereniging Badhoevedorp": (
-        "€277/year (2026), senior 25+ on 1 January"
-    ),
-    "Tennisvereniging Lucky Strike": (
-        "€205/year, senior category; fee year and age cutoff not specified"
-    ),
-    "Tennisvereniging Ouderkerk": (
-        "€175/year (2026), senior 26+; competition surcharge may apply"
+        "€35 registration fee. Seniors can only join combined tennis and padel "
+        "memberships: young senior (18–25) or senior (26+); annual rates require "
+        "member login."
     ),
 }
 INTRODUCE_ALLOWED = {
@@ -986,7 +1016,7 @@ DUAL_ACCESS_MEMBERSHIP_DATA = {
         "waiting_list": "No (direct online signup)",
     },
     "Amsterdam Racket Club": {
-        "membership_price": "€540–€630 per seasonal pass (off-peak/peak)",
+        "membership_price": "€540–€630/season (off-peak/peak; not an annual fee)",
         "waiting_list": "No (seasonal pass options)",
     },
     "Frans Otten Stadion": {
@@ -1023,9 +1053,8 @@ DUAL_ACCESS_MEMBERSHIP_DATA = {
     },
     "Tennispark Randwijck": {
         "membership_price": (
-            "€63 prorated through 31 Mar 2027; all players must be members. "
-            "Renews Mar 2027 for a full year; new rate unknown. 2026 annual rate "
-            "was €126."
+            "€126/year (2026 rate); €63 prorated through 31 Mar 2027; "
+            "new annual rate unknown"
         ),
         "waiting_list": "No known standing waitlist",
     },
@@ -1086,6 +1115,10 @@ def default_clubs() -> list[dict[str, Any]]:
             **details,
             "address": details.get(
                 "address", f"{details['name']}, Amsterdam, Netherlands"
+            ),
+            "membership_price": SENIOR_MEMBERSHIP_PRICES.get(
+                details["name"],
+                "",
             ),
             "other_notes": details.get("other_notes", ""),
         }
@@ -1689,7 +1722,7 @@ def display_clubs(
                         "membership_price"
                     )
                     or club.get("membership_price")
-                    or "Not published"
+                    or "€—/year (not published)"
                 ),
                 "Court surface": club.get("court_type") or "Not listed",
                 "Introducé allowed?": INTRODUCE_ALLOWED.get(
@@ -1717,6 +1750,18 @@ def display_clubs(
             }
         )
     return pd.DataFrame(rows)
+
+
+def append_membership_other_info(existing: Any, membership_note: str) -> str:
+    existing_text = clean_optional_text(existing)
+    if existing_text.casefold() == "not listed":
+        existing_text = ""
+    notes = [
+        note
+        for note in (existing_text, membership_note.strip())
+        if note
+    ]
+    return " ".join(notes) if notes else "Not listed"
 
 
 def style_club_rows(
@@ -3197,6 +3242,13 @@ def main() -> None:
     members_only_clubs = pd.concat(
         [members_only_clubs, public_member_clubs],
         ignore_index=True,
+    )
+    members_only_clubs["Other info"] = members_only_clubs.apply(
+        lambda row: append_membership_other_info(
+            row["Other info"],
+            SENIOR_MEMBERSHIP_OTHER_INFO.get(row["Club"], ""),
+        ),
+        axis=1,
     )
     if show_public_surface:
         show_court_surface_info(public_clubs)
