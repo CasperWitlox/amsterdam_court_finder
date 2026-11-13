@@ -998,6 +998,199 @@ MEMBERSHIP_CAPACITY_INFO = {
         "ratio": "Unknown",
         "notes": "Located in Zwanenburg; 6 of 7 courts are lit.",
     },
+    "Tennisvereniging Diemen-Zuid (TVDZ)": {
+        "members": "~300",
+        "courts": "6",
+        "ratio": "50",
+        "notes": "6 lit all-weather artificial turf courts; open year-round.",
+    },
+    "TV Geuzenveld": {
+        "members": "200–220",
+        "courts": "4",
+        "ratio": "50–55",
+        "notes": (
+            "4 lit all-weather courts in Nieuw-West; the club advertises high "
+            "availability."
+        ),
+    },
+    "Tennisvereniging Amsterdamse Bos": {
+        "members": "270",
+        "courts": "5",
+        "ratio": "54",
+        "notes": (
+            "5 lit clay courts; the club is growing toward a 500-member cap "
+            "(ratio 100 at capacity)."
+        ),
+    },
+    "Amstelpark Tennisclub": {
+        "members": "~1,800",
+        "courts": "29",
+        "ratio": "62",
+        "notes": "18 outdoor clay and 11 indoor hard courts; no waiting list.",
+    },
+    "LTC Startbaan": {
+        "members": ">1,000",
+        "courts": "17",
+        "ratio": "59–83",
+        "notes": (
+            "12 outdoor clay and 5 indoor courts; ratio is about 83 using "
+            "outdoor courts only."
+        ),
+    },
+    "Tennisclub A.T.V.D.": {
+        "members": "~700",
+        "courts": "9",
+        "ratio": "78",
+        "notes": "9 lit clay courts in Diemen; recently expanded to 700 members.",
+    },
+    "Tennispark Blauw-Wit": {
+        "members": "~300*",
+        "courts": "4",
+        "ratio": "75*",
+        "notes": (
+            "*The wider club has about 600 members: roughly 300 korfball and "
+            "300 tennis; 4 lit artificial-turf courts."
+        ),
+    },
+    "A.L.T.C. De Aemstelburgh": {
+        "members": ">1,200",
+        "courts": "14",
+        "ratio": "86+",
+        "notes": "14 lit clay courts in Amstelveen; no current waiting list.",
+    },
+    "TV Tie-Breakers": {
+        "members": "1,400–1,500",
+        "courts": "15",
+        "ratio": "93–100",
+        "notes": (
+            "12 outdoor clay and 3 indoor carpet courts; strict senior "
+            "waiting list/selection."
+        ),
+    },
+    "Tennisclub Gaasperpark": {
+        "members": "~600",
+        "courts": "6",
+        "ratio": "100",
+        "notes": "6 lit clay courts plus 4 padel courts; open 365 days a year.",
+    },
+    "Tennis club Elzenhagen": {
+        "members": "1,840–1,900",
+        "courts": "14",
+        "ratio": "131–136",
+        "notes": "14 lit SmashCourt courts; open year-round in Amsterdam-Noord.",
+    },
+    "Tennisvereniging Rivierenbuurt (TVR)": {
+        "members": "~600",
+        "courts": "4",
+        "ratio": "150",
+        "notes": (
+            "4 hard courts; membership is closed indefinitely due to a full "
+            "waiting list."
+        ),
+    },
+    "PARK Tennis": {
+        "members": "Unknown",
+        "courts": "6",
+        "ratio": "Unknown",
+        "notes": (
+            "Shares the 12-court IJsbaanpad complex with T.C. IJsbaanpad; "
+            "uses tiered memberships."
+        ),
+    },
+    "Tennispark Randwijck": {
+        "members": "Unknown",
+        "courts": "2",
+        "ratio": "Unknown",
+        "notes": (
+            "Small commercial park with 2 clay courts in Amstelveen; summer "
+            "season is April–October."
+        ),
+    },
+    "USC Tennis": {
+        "members": "Unknown",
+        "courts": "8",
+        "ratio": "Unknown",
+        "notes": (
+            "University sports center with 4 outdoor and 4 indoor hard courts; "
+            "flexible student/public passes."
+        ),
+    },
+    "Frans Otten Stadion": {
+        "members": "Commercial",
+        "courts": "20",
+        "ratio": "N/A",
+        "notes": (
+            "15 outdoor and 5 indoor courts; seasonal contract courts and "
+            "pay-per-play rentals."
+        ),
+    },
+    "Amsterdam Racket Club": {
+        "members": "Commercial",
+        "courts": "19–23",
+        "ratio": "N/A",
+        "notes": (
+            "15 outdoor clay and 4–8 indoor courts; seasonal fixed-time "
+            "memberships and pay-per-play rentals."
+        ),
+    },
+}
+MEMBERSHIP_CONTEXT_NOTES = {
+    "T.C. Amsterdam": (
+        "Seasonal operation: open approximately April–October."
+    ),
+    "De Meer tennis": (
+        "Seasonal operation: open approximately March–November."
+    ),
+    "Amsterdamse Tennis Club Kadoelen": (
+        "All-weather courts support year-round use, spreading court usage "
+        "throughout the year."
+    ),
+    "T.C. Ijsbaanpad": (
+        "All-weather courts support year-round use, spreading court usage "
+        "throughout the year."
+    ),
+    "Tennisvereniging PST": (
+        "Some courts are shared with korfball clubs, so evening training can "
+        "make congestion higher than the members-per-court ratio suggests."
+    ),
+    "SV Club Triaz": (
+        "Some courts are shared with korfball clubs, so evening training can "
+        "make congestion higher than the members-per-court ratio suggests."
+    ),
+    "TV Linnaeushof": (
+        "About one-third of members are youth or off-peak/day members, who "
+        "primarily play in the afternoon or before 17:00; evening peak hours "
+        "may be less crowded than the total-membership ratio suggests."
+    ),
+    "Frans Otten Stadion": (
+        "Commercial venue: offers seasonal contract courts (the same day and "
+        "time each week) as well as hourly pay-per-play, unlike the ad-hoc "
+        "KNLTB ClubApp model at traditional associations."
+    ),
+    "Amsterdam Racket Club": (
+        "Commercial venue: offers seasonal contract courts (the same day and "
+        "time each week) as well as hourly pay-per-play, unlike the ad-hoc "
+        "KNLTB ClubApp model at traditional associations."
+    ),
+    "PARK Tennis": (
+        "Tiered access: Classic members reserve free-play slots, Light members "
+        "use credits, and Premium members rent fixed weekly courts."
+    ),
+    "Amstelpark Tennisclub": (
+        "The total includes indoor courts; indoor play may require an extra "
+        "hourly fee or separate winter contract, so the effective summer "
+        "outdoor ratio can be higher."
+    ),
+    "LTC Startbaan": (
+        "The total includes indoor courts; indoor play may require an extra "
+        "hourly fee or separate winter contract, so the effective summer "
+        "outdoor ratio can be higher."
+    ),
+    "TV Tie-Breakers": (
+        "The total includes indoor courts; indoor play may require an extra "
+        "hourly fee or separate winter contract, so the effective summer "
+        "outdoor ratio can be higher."
+    ),
 }
 SENIOR_MEMBERSHIP_OTHER_INFO = {
     "Tennisvereniging PST": (
@@ -1893,6 +2086,7 @@ def membership_table_other_info(club_name: str, existing: Any) -> str:
     notes = [
         SENIOR_MEMBERSHIP_OTHER_INFO.get(club_name, ""),
         MEMBERSHIP_CAPACITY_INFO.get(club_name, {}).get("notes", ""),
+        MEMBERSHIP_CONTEXT_NOTES.get(club_name, ""),
     ]
     return append_membership_other_info(
         existing,
@@ -1959,10 +2153,10 @@ def style_club_rows(
                 colors[row.index.get_loc("Cycling time")] = (
                     f"background-color: {cycling_style}"
                 )
-        if "Membership price" in row.index:
+        if "Senior membership price" in row.index:
             price_match = re.search(
                 r"€\s*(\d+(?:[.,]\d{1,2})?)",
-                str(row["Membership price"]),
+                str(row["Senior membership price"]),
             )
             if price_match:
                 price = float(price_match.group(1).replace(",", "."))
@@ -1973,7 +2167,7 @@ def style_club_rows(
                     if price <= 275
                     else "#A93226"
                 )
-                colors[row.index.get_loc("Membership price")] = (
+                colors[row.index.get_loc("Senior membership price")] = (
                     f"{row_color_value}; color: {price_color}; font-weight: bold"
                     if has_waiting_list_status
                     else f"color: {price_color}; font-weight: bold"
@@ -3422,8 +3616,11 @@ def main() -> None:
         ),
         axis=1,
     )
+    members_only_clubs = members_only_clubs.rename(
+        columns={"Membership price": "Senior membership price"}
+    )
     capacity_info = members_only_clubs["Club"].map(MEMBERSHIP_CAPACITY_INFO)
-    insertion_index = members_only_clubs.columns.get_loc("Membership price") + 1
+    insertion_index = members_only_clubs.columns.get_loc("Court surface") + 1
     members_only_clubs.insert(
         insertion_index,
         "Members (approx.)",
@@ -3468,8 +3665,8 @@ def main() -> None:
 
     st.subheader("🔒 Membership options")
     st.write(
-        "Looking for a longer-term commitment? Explore these club membership "
-        "options below."
+        "Looking for a longer-term commitment? Explore these club senior "
+        "membership options below."
     )
     with st.container(horizontal=True, gap="small", vertical_alignment="bottom"):
         if st.button(
@@ -3504,7 +3701,7 @@ def main() -> None:
                 if (match := re.match(r"(\d+)\s+min\b", str(value)))
                 else float("inf")
             ),
-            _membership_price=members_only_clubs["Membership price"].map(
+            _membership_price=members_only_clubs["Senior membership price"].map(
                 lambda value: float(match.group(1).replace(",", "."))
                 if (
                     match := re.search(
@@ -3520,7 +3717,7 @@ def main() -> None:
         ).drop(columns=["_cycling_minutes", "_membership_price"])
     else:
         members_only_clubs = members_only_clubs.assign(
-            _membership_price=members_only_clubs["Membership price"].map(
+            _membership_price=members_only_clubs["Senior membership price"].map(
                 lambda value: float(match.group(1).replace(",", "."))
                 if (
                     match := re.search(
@@ -3548,12 +3745,14 @@ def main() -> None:
             st.warning(failure)
     st.caption(
         "Row background: green = no waiting list; red = waiting list. "
-        "Membership-price text: green ≤ €200, amber €201–€275, red > €275; "
+        "Senior membership-price text: green ≤ €200, amber €201–€275, red > €275; "
         "cycling-time text retains its travel-time color coding."
     )
     st.caption(
         "Members per court: green ≤75, yellow 76–150, red >150. "
-        "Club membership and court figures are approximate where noted."
+        "Club membership and court figures are approximate where noted. "
+        "The Dutch tennis federation (KNLTB) uses 60 to 90 members per lit "
+        "outdoor court as a healthy guideline."
     )
     st.dataframe(
         style_club_rows(members_only_clubs),
