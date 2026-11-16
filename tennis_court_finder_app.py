@@ -635,6 +635,7 @@ USC_CREDENTIAL_CHECK_CLUBS = {CLUB_NAMES[10]}
 CREDENTIAL_CHECK_CLUBS = (
     BAANRESERVEREN_CREDENTIAL_CHECK_CLUBS | USC_CREDENTIAL_CHECK_CLUBS
 )
+MANUAL_ONLY_AVAILABILITY_CLUBS = {"Amsterdam Racket Club"}
 AUTOMATIC_CHECKER_PROTOCOL = 10
 LEGACY_DEFAULT_CLUB_NAMES = {
     "TOB Tennis vereniging",
@@ -1866,6 +1867,8 @@ def availability_label(
     availability_results: dict[str, dict[str, Any]],
     requested_slot: str,
 ) -> str:
+    if club["name"] in MANUAL_ONLY_AVAILABILITY_CLUBS:
+        return "Could not verify - Bookaball cloud browser verification blocked"
     result = availability_results.get(club["name"], {})
     if result.get("slot_key") == requested_slot:
         status = str(result["status"])
@@ -2610,6 +2613,11 @@ def run_availability_checks(
     duration_minutes: int,
     credentials: dict[str, tuple[str, str]],
 ) -> None:
+    available_clubs = [
+        club
+        for club in available_clubs
+        if club["name"] not in MANUAL_ONLY_AVAILABILITY_CLUBS
+    ]
     previous_worker = current_browser_worker()
     if previous_worker is not None:
         browser_worker_request(previous_worker, {"action": "STOP"})
@@ -2862,8 +2870,9 @@ def availability_search_explanation() -> None:
                 than 14 days ahead are labeled **Too early to check** and are not
                 checked. Within that window, a slot missing from the portal is
                 treated as **Unavailable**.
-              - Amsterdam Racket Club's Bookaball calendar can be checked up to
-                20 days ahead; later dates are labeled **Too early to check**.
+              - Amsterdam Racket Club is not included for now as checking its
+                availability requires booking page Bookaball to provide approved
+                API access. Users are recommended to check this club manually.
             """
         )
 
@@ -3552,7 +3561,8 @@ def main() -> None:
     for club_name, error in st.session_state.pop(
         "availability_check_failures", {}
     ).items():
-        st.error(f"Could not check {club_name}: {error}")
+        if club_name not in MANUAL_ONLY_AVAILABILITY_CLUBS:
+            st.error(f"Could not check {club_name}: {error}")
     if saved_credentials:
         st.caption("Booking-portal credentials are available for this app session.")
 
