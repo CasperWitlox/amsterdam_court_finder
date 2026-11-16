@@ -1920,7 +1920,7 @@ def available_courts_label(
         return "—"
     status = str(result.get("status", ""))
     if status.startswith("Unavailable"):
-        return "None"
+        return "—"
     if not status.startswith("Available"):
         return "—"
 
