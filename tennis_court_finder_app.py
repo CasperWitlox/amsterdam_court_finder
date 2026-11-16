@@ -3418,13 +3418,23 @@ def main() -> None:
             step=timedelta(minutes=15),
             key="booking_start_time",
         )
-        duration_minutes = st.segmented_control(
-            "Duration",
-            options=(60, 90),
-            default=60,
-            format_func=lambda minutes: f"{minutes} minutes",
-            key="duration_minutes",
-        )
+        with st.container(horizontal=True, vertical_alignment="bottom"):
+            duration_minutes = st.segmented_control(
+                "Duration",
+                options=(60, 90),
+                default=60,
+                format_func=lambda minutes: f"{minutes} minutes",
+                key="duration_minutes",
+            )
+            include_credentials_required = st.toggle(
+                "Include sign-in-required clubs",
+                value=True,
+                key="include_credentials_required_clubs",
+                help=(
+                    "Include USC, Frans Otten Stadion, and Amstelpark "
+                    "Tennisclub in the public-club table and availability checks."
+                ),
+            )
         start = datetime.combine(selected_date, selected_time)
         end = start + timedelta(minutes=duration_minutes)
         st.caption(
@@ -3502,9 +3512,15 @@ def main() -> None:
 
     if check_availability_clicked:
         available_clubs = [
-            item for item in clubs if item["name"] in BROWSER_CHECK_CLUBS
+            item
+            for item in clubs
+            if item["name"] in BROWSER_CHECK_CLUBS
+            and (
+                include_credentials_required
+                or item["name"] not in CREDENTIAL_CHECK_CLUBS
+            )
         ]
-        if saved_credentials:
+        if saved_credentials or not include_credentials_required:
             st.session_state["availability_check_started"] = True
             try:
                 with st.spinner("Checking all public (non-member) clubs..."):
@@ -3513,7 +3529,7 @@ def main() -> None:
                         selected_date,
                         selected_time,
                         int(duration_minutes),
-                        saved_credentials,
+                        saved_credentials or {},
                     )
             except (
                 OSError,
@@ -3577,6 +3593,10 @@ def main() -> None:
             "Other info",
         ]
     ]
+    if not include_credentials_required:
+        public_clubs = public_clubs[
+            ~public_clubs["Club"].isin(CREDENTIAL_CHECK_CLUBS)
+        ]
     members_only_clubs = comparison[
         comparison["Booking access"] == "Members only"
     ][
