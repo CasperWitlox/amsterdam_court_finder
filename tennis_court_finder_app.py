@@ -1801,6 +1801,10 @@ TWO_WEEK_MEET_AND_PLAY_CLUBS = {
     "TV Geuzenveld",
     "LTC Startbaan",
 }
+MEET_AND_PLAY_MISSING_SLOT_IS_UNAVAILABLE_CLUBS = (
+    TWO_WEEK_MEET_AND_PLAY_CLUBS
+    | {"Tennisvereniging Rivierenbuurt (TVR)"}
+)
 BOOKING_ADVANCE_DAYS = {
     "USC Tennis": 3,
     "Tennisclub Gaasperpark": 10,
@@ -1873,7 +1877,7 @@ def availability_label(
     if result.get("slot_key") == requested_slot:
         status = str(result["status"])
         if (
-            club["name"] in TWO_WEEK_MEET_AND_PLAY_CLUBS
+            club["name"] in MEET_AND_PLAY_MISSING_SLOT_IS_UNAVAILABLE_CLUBS
             and status
             in {
                 "Could not verify - start time is not shown",
