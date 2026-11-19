@@ -743,10 +743,16 @@ def log_worker_diagnostic(message: str) -> None:
     sys.stderr.flush()
 
 
-def log_worker_result(result: dict[str, Any]) -> None:
+def log_worker_result(
+    result: dict[str, Any],
+    request_id: str | None,
+) -> None:
     sys.stderr.write(
         "[booking-result] "
-        + json.dumps({"ok": True, **result}, ensure_ascii=False)
+        + json.dumps(
+            {"ok": True, "request_id": request_id, **result},
+            ensure_ascii=False,
+        )
         + "\n"
     )
     sys.stderr.flush()
@@ -759,7 +765,14 @@ def save_worker_result(command: dict[str, Any], result: dict[str, Any]) -> None:
     path = Path(result_path)
     temporary_path = path.with_suffix(path.suffix + ".tmp")
     temporary_path.write_text(
-        json.dumps({"ok": True, **result}, ensure_ascii=False),
+        json.dumps(
+            {
+                "ok": True,
+                "request_id": command.get("_request_id"),
+                **result,
+            },
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
     temporary_path.replace(path)
@@ -2181,10 +2194,12 @@ def run_worker() -> int:
                         if action == "CHECK":
                             result = check_public_slot(browser, command)
                             save_worker_result(command, result)
-                            log_worker_result(result)
+                            request_id = command.get("_request_id")
+                            log_worker_result(result, request_id)
                             emit(
                                 {
                                     "ok": True,
+                                    "request_id": request_id,
                                     **result,
                                 }
                             )
@@ -2202,8 +2217,15 @@ def run_worker() -> int:
                                 "reason": error_message,
                             }
                             save_worker_result(command, error_result)
-                            log_worker_result(error_result)
-                        emit({"ok": False, "error": error_message})
+                            request_id = command.get("_request_id")
+                            log_worker_result(error_result, request_id)
+                        emit(
+                            {
+                                "ok": False,
+                                "request_id": command.get("_request_id"),
+                                "error": error_message,
+                            }
+                        )
                     except Exception as error:
                         error_message = sanitized_worker_error(error, command)
                         log_worker_diagnostic(f"Check failed: {error_message}")
@@ -2213,10 +2235,12 @@ def run_worker() -> int:
                                 "reason": error_message,
                             }
                             save_worker_result(command, error_result)
-                            log_worker_result(error_result)
+                            request_id = command.get("_request_id")
+                            log_worker_result(error_result, request_id)
                         emit(
                             {
                                 "ok": False,
+                                "request_id": command.get("_request_id"),
                                 "error": f"Booking page could not be read: {error_message}",
                             }
                         )

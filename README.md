@@ -19,6 +19,13 @@ A Streamlit dashboard for comparing tennis clubs in Amsterdam and checking court
 
 Configure API keys and any booking credentials through the deployment platform’s secrets settings or your local environment. **Do not add private keys, passwords, or other credentials to the repository.**
 
+The weather widget uses Open-Meteo when available. To show precipitation
+probability when that service is rate-limited, optionally create a free
+[WeatherAPI.com](https://www.weatherapi.com/signup.aspx) key and set
+`WEATHERAPI_API_KEY` in Render's environment variables. Its free plan provides
+hourly forecasts with rain chance for up to three days; MET Norway remains the
+no-key fallback for later dates.
+
 ## Deploy to Render with a custom domain
 
 The app uses Playwright with Chromium, so deploy it to Render as a Docker web
@@ -28,12 +35,13 @@ service:
    [Render Dashboard](https://dashboard.render.com/), connected to this repo.
 2. Select **Docker** as the runtime and use the root `Dockerfile`. The image
    installs the app dependencies and Chromium.
-3. Set the health check path to `/_stcore/health`. Browser checks run one
-   Chromium process at a time to reduce memory use. The free plan's 512 MB can
-   still be tight; if the service restarts or checks fail, consider a plan with
-   at least 2 GB of RAM.
-4. Add required secrets, such as `GOOGLE_MAPS_API_KEY`, under the service's
-   **Environment** settings. Do not add them to the Dockerfile or repository.
+3. Set the health check path to `/_stcore/health`. Availability checks reuse
+   one Chromium process and check clubs sequentially to reduce both startup time
+   and memory use. The free plan's 512 MB can still be tight; if the service
+   restarts or checks fail, consider a plan with at least 2 GB of RAM.
+4. Add required secrets, such as `GOOGLE_MAPS_API_KEY`, and the optional
+   `WEATHERAPI_API_KEY` under the service's **Environment** settings. Do not add
+   them to the Dockerfile or repository.
 5. After the first successful deploy, open the service's **Settings >
    Custom Domains**, add `amsterdamcourtfinder.nl`, and follow the DNS records
    shown by Render for your domain provider. Render can also redirect the `www`

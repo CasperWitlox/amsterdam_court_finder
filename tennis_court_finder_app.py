@@ -13,12 +13,12 @@ import subprocess
 import sys
 import tempfile
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from time import monotonic
 from typing import Any
 from urllib.parse import urlparse
+from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -29,6 +29,7 @@ import streamlit as st
 ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 ROUTE_FIELD_MASK = "routes.duration"
 WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
+WEATHERAPI_URL = "https://api.weatherapi.com/v1/forecast.json"
 METNO_WEATHER_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact"
 METNO_USER_AGENT = (
     "AmsterdamCourtFinder/1.0 "
@@ -642,7 +643,7 @@ CREDENTIAL_CHECK_CLUBS = (
     BAANRESERVEREN_CREDENTIAL_CHECK_CLUBS | USC_CREDENTIAL_CHECK_CLUBS
 )
 MANUAL_ONLY_AVAILABILITY_CLUBS = {"Amsterdam Racket Club"}
-AUTOMATIC_CHECKER_PROTOCOL = 10
+AUTOMATIC_CHECKER_PROTOCOL = 11
 LEGACY_DEFAULT_CLUB_NAMES = {
     "TOB Tennis vereniging",
     "Tennis- en Padelvereniging Geinburgia",
@@ -1612,6 +1613,85 @@ def routing_origin(address: str) -> str:
     return f"{normalized}, Amsterdam, Netherlands"
 
 
+def weatherapi_hourly_forecast(api_key: str) -> dict[str, list[Any]]:
+    response = requests.get(
+        WEATHERAPI_URL,
+        params={
+            "key": api_key,
+            "q": "52.3676,4.9041",
+            "days": 3,
+            "aqi": "no",
+            "alerts": "no",
+        },
+        timeout=15,
+    )
+    if response.status_code >= 400:
+        raise ValueError(f"WeatherAPI returned HTTP {response.status_code}.")
+    payload = response.json()
+    forecast = payload.get("forecast") if isinstance(payload, dict) else None
+    forecast_days = forecast.get("forecastday") if isinstance(forecast, dict) else None
+    if not isinstance(forecast_days, list):
+        raise ValueError("WeatherAPI returned an incomplete forecast.")
+
+    hourly: dict[str, list[Any]] = {
+        "time": [],
+        "temperature_2m": [],
+        "precipitation_probability": [],
+        "weather_code": [],
+        "wind_speed_10m": [],
+        "precipitation": [],
+        "interval_hours": [],
+        "sources": [],
+        "conditions": [],
+    }
+    for forecast_day in forecast_days:
+        entries = (
+            forecast_day.get("hour")
+            if isinstance(forecast_day, dict)
+            else None
+        )
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict) or not isinstance(entry.get("time"), str):
+                continue
+            try:
+                local_time = datetime.strptime(entry["time"], "%Y-%m-%d %H:%M")
+            except ValueError:
+                continue
+            condition = entry.get("condition")
+            condition_text = (
+                condition.get("text")
+                if isinstance(condition, dict)
+                and isinstance(condition.get("text"), str)
+                else "Conditions unavailable"
+            )
+            rain_chance = entry.get("chance_of_rain")
+            snow_chance = entry.get("chance_of_snow")
+            precipitation_chances = [
+                chance
+                for chance in (rain_chance, snow_chance)
+                if isinstance(chance, (int, float))
+            ]
+            hourly["time"].append(local_time.strftime("%Y-%m-%dT%H:%M"))
+            hourly["temperature_2m"].append(entry.get("temp_c"))
+            hourly["precipitation_probability"].append(
+                max(precipitation_chances) if precipitation_chances else None
+            )
+            hourly["weather_code"].append(
+                condition.get("code") if isinstance(condition, dict) else None
+            )
+            hourly["wind_speed_10m"].append(entry.get("wind_kph"))
+            hourly["precipitation"].append(entry.get("precip_mm"))
+            hourly["interval_hours"].append(1)
+            hourly["sources"].append("WeatherAPI.com")
+            hourly["conditions"].append(condition_text)
+
+    if not hourly["time"]:
+        raise ValueError("WeatherAPI returned no usable hourly forecast.")
+    return hourly
+
+
 # MET Norway asks clients outside the Nordic region to space identical requests
 # at least three hours apart.
 @st.cache_data(ttl=4 * 60 * 60, show_spinner=False)
@@ -1691,6 +1771,8 @@ def amsterdam_hourly_forecast() -> dict[str, Any]:
             "wind_speed_10m": [],
             "precipitation": [],
             "interval_hours": [],
+            "sources": [],
+            "conditions": [],
         }
         for item in timeseries:
             if not isinstance(item, dict):
@@ -1747,12 +1829,74 @@ def amsterdam_hourly_forecast() -> dict[str, Any]:
                 else None
             )
             hourly["interval_hours"].append(period_hours)
+            hourly["sources"].append("MET Norway")
+            hourly["conditions"].append(None)
 
         if not hourly["time"]:
             raise ValueError(
                 "Open-Meteo failed, and MET Norway returned no usable forecast."
             ) from open_meteo_error
         hourly["source"] = "MET Norway"
+
+        api_key = os.environ.get("WEATHERAPI_API_KEY", "").strip()
+        if api_key:
+            try:
+                weatherapi_hourly = weatherapi_hourly_forecast(api_key)
+            except (requests.RequestException, ValueError) as weatherapi_error:
+                error_message = str(weatherapi_error)
+                hourly["weatherapi_error"] = (
+                    error_message
+                    if error_message.startswith("WeatherAPI returned HTTP ")
+                    else "WeatherAPI fallback could not load an hourly forecast."
+                )
+            else:
+                rows = {
+                    timestamp: {
+                        field: hourly[field][index]
+                        for field in (
+                            "temperature_2m",
+                            "precipitation_probability",
+                            "weather_code",
+                            "wind_speed_10m",
+                            "precipitation",
+                            "interval_hours",
+                            "sources",
+                            "conditions",
+                        )
+                    }
+                    for index, timestamp in enumerate(hourly["time"])
+                }
+                for index, timestamp in enumerate(weatherapi_hourly["time"]):
+                    rows[timestamp] = {
+                        field: weatherapi_hourly[field][index]
+                        for field in (
+                            "temperature_2m",
+                            "precipitation_probability",
+                            "weather_code",
+                            "wind_speed_10m",
+                            "precipitation",
+                            "interval_hours",
+                            "sources",
+                            "conditions",
+                        )
+                    }
+                ordered_rows = sorted(rows.items())
+                hourly["time"] = [timestamp for timestamp, _ in ordered_rows]
+                for field in (
+                    "temperature_2m",
+                    "precipitation_probability",
+                    "weather_code",
+                    "wind_speed_10m",
+                    "precipitation",
+                    "interval_hours",
+                    "sources",
+                    "conditions",
+                ):
+                    hourly[field] = [
+                        row[field]
+                        for _, row in ordered_rows
+                    ]
+                hourly["source"] = "WeatherAPI.com and MET Norway"
         return hourly
 
 
@@ -1885,42 +2029,42 @@ def show_amsterdam_weather(
             st.warning(f"Could not load the Amsterdam weather forecast: {error}")
             return
 
-        source = hourly.get("source", "Open-Meteo")
+        sources = hourly.get("sources")
+
+        def source_at(index: int) -> str:
+            if isinstance(sources, list) and index < len(sources):
+                return str(sources[index])
+            return str(hourly.get("source", "Open-Meteo"))
+
         try:
             index = hourly["time"].index(forecast_timestamp)
         except ValueError:
-            if source == "MET Norway":
-                target_time = datetime.combine(selected_date, selected_hour)
-                interval_hours = hourly.get("interval_hours", [])
-                index = next(
-                    (
-                        candidate
-                        for candidate, timestamp in enumerate(hourly["time"])
-                        if (
-                            (forecast_time := datetime.fromisoformat(timestamp))
-                            <= target_time
-                            < forecast_time
-                            + timedelta(
-                                hours=(
-                                    interval_hours[candidate]
-                                    if candidate < len(interval_hours)
-                                    else 1
-                                )
+            target_time = datetime.combine(selected_date, selected_hour)
+            interval_hours = hourly.get("interval_hours", [])
+            index = next(
+                (
+                    candidate
+                    for candidate, timestamp in enumerate(hourly["time"])
+                    if source_at(candidate) == "MET Norway"
+                    and (
+                        (forecast_time := datetime.fromisoformat(timestamp))
+                        <= target_time
+                        < forecast_time
+                        + timedelta(
+                            hours=(
+                                interval_hours[candidate]
+                                if candidate < len(interval_hours)
+                                else 1
                             )
                         )
-                    ),
-                    -1,
-                )
-                if index < 0:
-                    st.caption(
-                        "A forecast is not available for that time. The MET Norway "
-                        "fallback covers up to 9 days ahead."
                     )
-                    return
-            else:
+                ),
+                -1,
+            )
+            if index < 0:
                 st.caption(
-                    "A forecast is not available for that hour yet. "
-                    "Choose a future time or check again later."
+                    "A forecast is not available for that time. Open-Meteo covers "
+                    "up to 16 days; the fallback forecasts cover fewer days."
                 )
                 return
 
@@ -1935,7 +2079,15 @@ def show_amsterdam_weather(
         precipitation = hourly["precipitation_probability"][index]
         wind_speed = hourly["wind_speed_10m"][index]
         rainfall = hourly["precipitation"][index]
-        condition = weather_description(hourly["weather_code"][index])
+        source = source_at(index)
+        conditions = hourly.get("conditions", [])
+        condition = (
+            conditions[index]
+            if source == "WeatherAPI.com"
+            and index < len(conditions)
+            and conditions[index]
+            else weather_description(hourly["weather_code"][index])
+        )
         next_hour = datetime.combine(selected_date, selected_hour) + timedelta(hours=1)
         if source == "MET Norway":
             interval_hours = hourly["interval_hours"][index]
@@ -1944,6 +2096,11 @@ def show_amsterdam_weather(
             st.caption(
                 f"{condition} · MET Norway forecast for "
                 f"{forecast_start:%H:%M}–{forecast_end:%H:%M} Amsterdam time"
+            )
+        elif source == "WeatherAPI.com":
+            st.caption(
+                f"{condition} · WeatherAPI.com forecast for "
+                f"{selected_hour:%H:%M}–{next_hour:%H:%M} Amsterdam time"
             )
         else:
             st.caption(
@@ -1988,6 +2145,13 @@ def show_amsterdam_weather(
                 "under "
                 "[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). "
                 "Precipitation probability is not available in this fallback."
+            )
+            if hourly.get("weatherapi_error"):
+                st.caption(hourly["weatherapi_error"])
+        elif source == "WeatherAPI.com":
+            st.caption(
+                "Hourly forecast by [WeatherAPI.com](https://www.weatherapi.com/) "
+                "· precipitation chance is available for up to 3 days on its free tier."
             )
         else:
             st.caption(
@@ -2589,7 +2753,7 @@ def ensure_playwright_browser_installed() -> bool:
 
 
 def start_browser_worker(
-    secrets: tuple[str, str] | None = None,
+    secrets: tuple[str, ...] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     ensure_playwright_browser_installed()
     worker_script = Path(__file__).with_name("tennis_browser_worker.py")
@@ -2677,6 +2841,7 @@ def drain_browser_worker_errors(
 
 def completed_result_from_diagnostics(
     diagnostics: list[str],
+    request_id: str,
 ) -> dict[str, Any] | None:
     for line in reversed(diagnostics):
         prefix = "[booking-result] "
@@ -2686,17 +2851,30 @@ def completed_result_from_diagnostics(
             response = json.loads(line[len(prefix):])
         except json.JSONDecodeError:
             continue
-        if isinstance(response, dict) and response.get("ok") and response.get("status"):
+        if (
+            isinstance(response, dict)
+            and response.get("request_id") == request_id
+            and response.get("ok")
+            and response.get("status")
+        ):
             return response
     return None
 
 
-def read_worker_result_file(path: Path) -> dict[str, Any] | None:
+def read_worker_result_file(
+    path: Path,
+    request_id: str,
+) -> dict[str, Any] | None:
     try:
         response = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-    if isinstance(response, dict) and response.get("ok") and response.get("status"):
+    if (
+        isinstance(response, dict)
+        and response.get("request_id") == request_id
+        and response.get("ok")
+        and response.get("status")
+    ):
         return response
     return None
 
@@ -2715,9 +2893,12 @@ def browser_worker_request(
     if process.stdin is None:
         raise RuntimeError("The local booking browser input is unavailable.")
     result_path: Path | None = None
+    request_id: str | None = None
     try:
         command = dict(command)
         if command.get("action") == "CHECK":
+            request_id = uuid4().hex
+            command["_request_id"] = request_id
             descriptor, path_string = tempfile.mkstemp(
                 prefix="tennis-booking-result-",
                 suffix=".json",
@@ -2735,12 +2916,16 @@ def browser_worker_request(
 
         deadline = monotonic() + timeout
         while True:
-            if result_path is not None:
-                file_result = read_worker_result_file(result_path)
+            if result_path is not None and request_id is not None:
+                file_result = read_worker_result_file(result_path, request_id)
                 if file_result is not None:
                     return file_result
             diagnostics = worker.get("diagnostics", [])
-            completed_result = completed_result_from_diagnostics(diagnostics)
+            completed_result = (
+                completed_result_from_diagnostics(diagnostics, request_id)
+                if request_id is not None
+                else None
+            )
             if completed_result is not None:
                 return completed_result
             remaining = deadline - monotonic()
@@ -2756,7 +2941,12 @@ def browser_worker_request(
                 response = worker["responses"].get(
                     timeout=max(0.01, min(remaining, 0.25))
                 )
-                break
+                if request_id is not None and response.get("request_id") == request_id:
+                    break
+                if request_id is None and (
+                    command.get("action") != "STOP" or response.get("stopped")
+                ):
+                    break
             except queue.Empty:
                 continue
         if not response.get("ok"):
@@ -2778,10 +2968,12 @@ def check_club_availability(
     selected_time: time,
     duration_minutes: int,
     credentials: tuple[str, str] | None = None,
+    worker: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    worker = None
+    owns_worker = worker is None
     try:
-        worker, _ready = start_browser_worker(credentials)
+        if worker is None:
+            worker, _ready = start_browser_worker(credentials)
         command = {
             "action": "CHECK",
             "url": club.get("booking_url", ""),
@@ -2805,7 +2997,7 @@ def check_club_availability(
                     message = message.replace(secret, "[redacted]")
         raise RuntimeError(message) from error
     finally:
-        if worker is not None:
+        if owns_worker and worker is not None:
             process = worker["process"]
             if process.poll() is None:
                 try:
@@ -2858,30 +3050,57 @@ def run_availability_checks(
         ),
         key=lambda club: club["name"] not in CREDENTIAL_CHECK_CLUBS,
     )
-    # Keep one Chromium process active at a time to avoid exhausting Render's
-    # 512 MB free-instance memory limit.
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        futures = {
-            executor.submit(
-                check_club_availability,
-                club,
-                selected_date,
-                selected_time,
-                duration_minutes,
-                (
-                    credentials["usc"]
-                    if club["name"] in USC_CREDENTIAL_CHECK_CLUBS
-                    else credentials["baanreserveren"]
-                    if club["name"] in BAANRESERVEREN_CREDENTIAL_CHECK_CLUBS
-                    else None
-                ),
-            ): club
-            for club in ordered_clubs
-        }
-        for future in as_completed(futures):
-            club = futures[future]
+    # Reuse one Chromium process and check clubs sequentially to stay within the
+    # Render Free memory limit without paying the browser startup cost per club.
+    worker_secrets = tuple(
+        secret
+        for portal_credentials in credentials.values()
+        for secret in portal_credentials
+    )
+    worker = None
+    try:
+        if ordered_clubs:
             try:
-                response = future.result()
+                worker, _ready = start_browser_worker(worker_secrets)
+            except (OSError, RuntimeError, TimeoutError, subprocess.TimeoutExpired) as error:
+                failures.update(
+                    (club["name"], str(error)) for club in ordered_clubs
+                )
+                ordered_clubs = []
+
+        for index, club in enumerate(ordered_clubs):
+            if worker is None or worker["process"].poll() is not None:
+                try:
+                    worker, _ready = start_browser_worker(worker_secrets)
+                except (
+                    OSError,
+                    RuntimeError,
+                    TimeoutError,
+                    subprocess.TimeoutExpired,
+                ) as error:
+                    failures[club["name"]] = str(error)
+                    for remaining_club in ordered_clubs[index + 1:]:
+                        failures[remaining_club["name"]] = (
+                            "The booking browser could not restart after an earlier check."
+                        )
+                    break
+
+            club_credentials = (
+                credentials["usc"]
+                if club["name"] in USC_CREDENTIAL_CHECK_CLUBS
+                else credentials["baanreserveren"]
+                if club["name"] in BAANRESERVEREN_CREDENTIAL_CHECK_CLUBS
+                else None
+            )
+            try:
+                response = check_club_availability(
+                    club,
+                    selected_date,
+                    selected_time,
+                    duration_minutes,
+                    club_credentials,
+                    worker=worker,
+                )
                 responses[club["name"]] = response
                 if (
                     club["name"] == "Amsterdam Racket Club"
@@ -2910,6 +3129,20 @@ def run_availability_checks(
                     }
                 else:
                     failures[club["name"]] = str(error)
+                if worker["process"].poll() is not None:
+                    worker = None
+    finally:
+        if worker is not None and worker["process"].poll() is None:
+            try:
+                browser_worker_request(worker, {"action": "STOP"}, timeout=10)
+                worker["process"].wait(timeout=10)
+            except (
+                OSError,
+                RuntimeError,
+                TimeoutError,
+                subprocess.TimeoutExpired,
+            ):
+                close_failed_browser_worker(worker["process"])
 
     checked_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
     results = st.session_state.setdefault("availability_results", {})
