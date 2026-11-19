@@ -1893,7 +1893,11 @@ def check_baanreserveren_slot(browser: Any, command: dict[str, Any]) -> dict[str
         )
 
 
-def check_public_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any]:
+def check_public_slot(
+    browser: Any,
+    command: dict[str, Any],
+    context: Any | None = None,
+) -> dict[str, Any]:
     parsed_url = urlparse(str(command.get("url", "")))
     if parsed_url.hostname == "blauwwit.allbooked.com":
         return check_allbooked_slot(browser, command)
@@ -1915,7 +1919,10 @@ def check_public_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any]:
     if duration_minutes < 15 or duration_minutes > 300:
         raise ValueError("Duration must be between 15 and 300 minutes.")
 
-    context = browser.new_context(locale="nl-NL")
+    owns_context = context is None
+    if context is None:
+        context = browser.new_context(locale="nl-NL")
+    page = None
     try:
         page = context.new_page()
         booking_url = url_for_date(command["url"], selected_date)
@@ -2088,7 +2095,10 @@ def check_public_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any]:
             )
         return result
     finally:
-        context.close()
+        if owns_context:
+            context.close()
+        elif page is not None:
+            page.close()
 
 
 def check_allbooked_slot(browser: Any, command: dict[str, Any]) -> dict[str, Any]:
@@ -2184,6 +2194,7 @@ def run_worker() -> int:
             log_worker_diagnostic("Starting Chromium.")
             browser = playwright.chromium.launch(headless=True)
             try:
+                meetandplay_context = None
                 log_worker_diagnostic("Chromium is ready.")
                 emit({"ok": True, "ready": True})
                 for line in sys.stdin:
@@ -2192,7 +2203,23 @@ def run_worker() -> int:
                         command = json.loads(line)
                         action = command.get("action")
                         if action == "CHECK":
-                            result = check_public_slot(browser, command)
+                            hostname = urlparse(
+                                str(command.get("url", ""))
+                            ).hostname
+                            if hostname == "meetandplay.nl" or (
+                                hostname and hostname.endswith(".meetandplay.nl")
+                            ):
+                                if meetandplay_context is None:
+                                    meetandplay_context = browser.new_context(
+                                        locale="nl-NL"
+                                    )
+                                result = check_public_slot(
+                                    browser,
+                                    command,
+                                    context=meetandplay_context,
+                                )
+                            else:
+                                result = check_public_slot(browser, command)
                             save_worker_result(command, result)
                             request_id = command.get("_request_id")
                             log_worker_result(result, request_id)
