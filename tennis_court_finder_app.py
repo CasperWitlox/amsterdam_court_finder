@@ -29,6 +29,12 @@ import streamlit as st
 ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 ROUTE_FIELD_MASK = "routes.duration"
 WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
+METNO_WEATHER_URL = "https://api.met.no/weatherapi/locationforecast/2.0/compact"
+METNO_USER_AGENT = (
+    "AmsterdamCourtFinder/1.0 "
+    "(https://amsterdamcourtfinder.nl; "
+    "https://github.com/CasperWitlox/amsterdam_court_finder)"
+)
 AMSTERDAM_TIMEZONE = ZoneInfo("Europe/Amsterdam")
 CLUB_NAMES = (
     "A.L.T.C. De Aemstelburgh",
@@ -1606,43 +1612,179 @@ def routing_origin(address: str) -> str:
     return f"{normalized}, Amsterdam, Netherlands"
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+# MET Norway asks clients outside the Nordic region to space identical requests
+# at least three hours apart.
+@st.cache_data(ttl=4 * 60 * 60, show_spinner=False)
 def amsterdam_hourly_forecast() -> dict[str, Any]:
-    response = requests.get(
-        WEATHER_URL,
-        params={
-            "latitude": 52.3676,
-            "longitude": 4.9041,
-            "hourly": (
-                "temperature_2m,precipitation_probability,weather_code,"
-                "wind_speed_10m,precipitation"
-            ),
-            "timezone": "Europe/Amsterdam",
-            "forecast_days": 16,
-        },
-        timeout=15,
-    )
-    response.raise_for_status()
-    payload = response.json()
-    hourly = payload.get("hourly") if isinstance(payload, dict) else None
-    fields = (
-        "time",
-        "temperature_2m",
-        "precipitation_probability",
-        "weather_code",
-        "wind_speed_10m",
-        "precipitation",
-    )
-    if not isinstance(hourly, dict) or any(
-        not isinstance(hourly.get(field), list) for field in fields
-    ):
-        raise ValueError("The weather service returned an incomplete hourly forecast.")
-    if len({len(hourly[field]) for field in fields}) != 1:
-        raise ValueError("The weather service returned mismatched hourly data.")
-    return hourly
+    try:
+        response = requests.get(
+            WEATHER_URL,
+            params={
+                "latitude": 52.3676,
+                "longitude": 4.9041,
+                "hourly": (
+                    "temperature_2m,precipitation_probability,weather_code,"
+                    "wind_speed_10m,precipitation"
+                ),
+                "timezone": "Europe/Amsterdam",
+                "forecast_days": 16,
+            },
+            timeout=15,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        hourly = payload.get("hourly") if isinstance(payload, dict) else None
+        fields = (
+            "time",
+            "temperature_2m",
+            "precipitation_probability",
+            "weather_code",
+            "wind_speed_10m",
+            "precipitation",
+        )
+        if not isinstance(hourly, dict) or any(
+            not isinstance(hourly.get(field), list) for field in fields
+        ):
+            raise ValueError(
+                "Open-Meteo returned an incomplete hourly forecast."
+            )
+        if len({len(hourly[field]) for field in fields}) != 1:
+            raise ValueError("Open-Meteo returned mismatched hourly data.")
+        return {
+            **hourly,
+            "source": "Open-Meteo",
+            "interval_hours": [1] * len(hourly["time"]),
+        }
+    except (requests.RequestException, ValueError) as open_meteo_error:
+        try:
+            response = requests.get(
+                METNO_WEATHER_URL,
+                params={"lat": 52.3676, "lon": 4.9041},
+                headers={"User-Agent": METNO_USER_AGENT},
+                timeout=15,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except requests.RequestException as metno_error:
+            raise ValueError(
+                "Open-Meteo failed, and the MET Norway fallback could not be "
+                f"loaded ({metno_error})."
+            ) from metno_error
+
+        properties = payload.get("properties") if isinstance(payload, dict) else None
+        timeseries = (
+            properties.get("timeseries")
+            if isinstance(properties, dict)
+            else None
+        )
+        if not isinstance(timeseries, list):
+            raise ValueError(
+                "Open-Meteo failed, and MET Norway returned an incomplete "
+                "forecast."
+            ) from open_meteo_error
+
+        hourly: dict[str, list[Any]] = {
+            "time": [],
+            "temperature_2m": [],
+            "precipitation_probability": [],
+            "weather_code": [],
+            "wind_speed_10m": [],
+            "precipitation": [],
+            "interval_hours": [],
+        }
+        for item in timeseries:
+            if not isinstance(item, dict):
+                continue
+            timestamp = item.get("time")
+            data = item.get("data")
+            instant = data.get("instant") if isinstance(data, dict) else None
+            details = instant.get("details") if isinstance(instant, dict) else None
+            if not isinstance(timestamp, str) or not isinstance(details, dict):
+                continue
+            try:
+                local_time = datetime.fromisoformat(
+                    timestamp.replace("Z", "+00:00")
+                ).astimezone(AMSTERDAM_TIMEZONE)
+            except ValueError:
+                continue
+
+            period_name = None
+            period_hours = 1
+            for candidate, hours in (
+                ("next_1_hours", 1),
+                ("next_6_hours", 6),
+                ("next_12_hours", 12),
+            ):
+                if isinstance(data.get(candidate), dict):
+                    period_name = candidate
+                    period_hours = hours
+                    break
+            period = data.get(period_name) if period_name else {}
+            period_summary = (
+                period.get("summary") if isinstance(period, dict) else {}
+            )
+            period_details = (
+                period.get("details") if isinstance(period, dict) else {}
+            )
+
+            hourly["time"].append(local_time.strftime("%Y-%m-%dT%H:%M"))
+            hourly["temperature_2m"].append(details.get("air_temperature"))
+            hourly["precipitation_probability"].append(None)
+            hourly["weather_code"].append(
+                period_summary.get("symbol_code")
+                if isinstance(period_summary, dict)
+                else None
+            )
+            wind_speed = details.get("wind_speed")
+            hourly["wind_speed_10m"].append(
+                wind_speed * 3.6
+                if isinstance(wind_speed, (int, float))
+                else None
+            )
+            hourly["precipitation"].append(
+                period_details.get("precipitation_amount")
+                if isinstance(period_details, dict)
+                else None
+            )
+            hourly["interval_hours"].append(period_hours)
+
+        if not hourly["time"]:
+            raise ValueError(
+                "Open-Meteo failed, and MET Norway returned no usable forecast."
+            ) from open_meteo_error
+        hourly["source"] = "MET Norway"
+        return hourly
 
 
 def weather_description(code: Any) -> str:
+    if isinstance(code, str):
+        symbol = code.lower().split("_")[0]
+        descriptions = {
+            "clearsky": "Clear sky",
+            "fair": "Mainly clear",
+            "partlycloudy": "Partly cloudy",
+            "cloudy": "Overcast",
+            "fog": "Fog",
+            "lightrain": "Light rain",
+            "rain": "Rain",
+            "heavyrain": "Heavy rain",
+            "lightrainshowers": "Light rain showers",
+            "rainshowers": "Rain showers",
+            "heavyrainshowers": "Heavy rain showers",
+            "lightsleet": "Light sleet",
+            "sleet": "Sleet",
+            "heavysleet": "Heavy sleet",
+            "lightsnow": "Light snow",
+            "snow": "Snow",
+            "heavysnow": "Heavy snow",
+            "lightrainandthunder": "Light rain and thunder",
+            "rainandthunder": "Rain and thunder",
+            "heavyrainandthunder": "Heavy rain and thunder",
+            "lightsnowandthunder": "Light snow and thunder",
+            "snowandthunder": "Snow and thunder",
+            "heavysnowandthunder": "Heavy snow and thunder",
+        }
+        return descriptions.get(symbol, "Conditions unavailable")
     if not isinstance(code, (int, float)):
         return "Conditions unavailable"
     code = int(code)
@@ -1677,10 +1819,15 @@ def recommend_court_environment(
     rainfall: Any,
     wind_speed: Any,
 ) -> tuple[str, str] | None:
-    values = (temperature, precipitation_probability, rainfall, wind_speed)
+    values = (temperature, rainfall, wind_speed)
     if not all(
         isinstance(value, (int, float)) and math.isfinite(value)
         for value in values
+    ):
+        return None
+    if precipitation_probability is not None and (
+        not isinstance(precipitation_probability, (int, float))
+        or not math.isfinite(precipitation_probability)
     ):
         return None
 
@@ -1689,10 +1836,15 @@ def recommend_court_environment(
         reasons.append(f"cold ({temperature:.0f}°C)")
     if wind_speed >= 35:
         reasons.append(f"strong wind ({wind_speed:.0f} km/h)")
-    if precipitation_probability >= 50 and rainfall >= 0.3:
-        reasons.append(
-            f"rain likely ({precipitation_probability:.0f}%, {rainfall:.1f} mm)"
-        )
+    if rainfall >= 0.3 and (
+        precipitation_probability is None or precipitation_probability >= 50
+    ):
+        if precipitation_probability is None:
+            reasons.append(f"rain forecast ({rainfall:.1f} mm)")
+        else:
+            reasons.append(
+                f"rain likely ({precipitation_probability:.0f}%, {rainfall:.1f} mm)"
+            )
     if reasons:
         return "Indoor", "Indoor is preferable for " + ", ".join(reasons) + "."
     return (
@@ -1733,9 +1885,46 @@ def show_amsterdam_weather(
             st.warning(f"Could not load the Amsterdam weather forecast: {error}")
             return
 
+        source = hourly.get("source", "Open-Meteo")
         try:
             index = hourly["time"].index(forecast_timestamp)
         except ValueError:
+            if source == "MET Norway":
+                target_time = datetime.combine(selected_date, selected_hour)
+                interval_hours = hourly.get("interval_hours", [])
+                index = next(
+                    (
+                        candidate
+                        for candidate, timestamp in enumerate(hourly["time"])
+                        if (
+                            (forecast_time := datetime.fromisoformat(timestamp))
+                            <= target_time
+                            < forecast_time
+                            + timedelta(
+                                hours=(
+                                    interval_hours[candidate]
+                                    if candidate < len(interval_hours)
+                                    else 1
+                                )
+                            )
+                        )
+                    ),
+                    -1,
+                )
+                if index < 0:
+                    st.caption(
+                        "A forecast is not available for that time. The MET Norway "
+                        "fallback covers up to 9 days ahead."
+                    )
+                    return
+            else:
+                st.caption(
+                    "A forecast is not available for that hour yet. "
+                    "Choose a future time or check again later."
+                )
+                return
+
+        if index < 0:
             st.caption(
                 "A forecast is not available for that hour yet. "
                 "Choose a future time or check again later."
@@ -1748,10 +1937,19 @@ def show_amsterdam_weather(
         rainfall = hourly["precipitation"][index]
         condition = weather_description(hourly["weather_code"][index])
         next_hour = datetime.combine(selected_date, selected_hour) + timedelta(hours=1)
-        st.caption(
-            f"{condition} · forecast for {selected_hour:%H:%M}–"
-            f"{next_hour:%H:%M} Amsterdam time"
-        )
+        if source == "MET Norway":
+            interval_hours = hourly["interval_hours"][index]
+            forecast_start = datetime.fromisoformat(hourly["time"][index])
+            forecast_end = forecast_start + timedelta(hours=interval_hours)
+            st.caption(
+                f"{condition} · MET Norway forecast for "
+                f"{forecast_start:%H:%M}–{forecast_end:%H:%M} Amsterdam time"
+            )
+        else:
+            st.caption(
+                f"{condition} · forecast for {selected_hour:%H:%M}–"
+                f"{next_hour:%H:%M} Amsterdam time"
+            )
         metric_columns = st.columns(4)
         metric_columns[0].metric(
             "Temperature",
@@ -1765,10 +1963,13 @@ def show_amsterdam_weather(
             "Wind",
             f"{wind_speed:.0f} km/h" if isinstance(wind_speed, (int, float)) else "—",
         )
+        interval_hours = hourly.get("interval_hours", [1])[index]
         metric_columns[3].metric(
-            "Expected rainfall",
+            "Expected rainfall"
+            if interval_hours == 1
+            else f"Expected rainfall ({interval_hours}-hour period)",
             f"{rainfall:.1f} mm" if isinstance(rainfall, (int, float)) else "—",
-            help="Forecast rainfall for the selected hour.",
+            help="Forecast rainfall for the selected hour or forecast period.",
         )
         recommendation = recommend_court_environment(
             temperature,
@@ -1781,10 +1982,18 @@ def show_amsterdam_weather(
             st.markdown(f"**Recommended court: {environment}.** {explanation}")
         else:
             environment = None
-        st.caption(
-            "Hourly forecast by [Open-Meteo](https://open-meteo.com/) · "
-            "no API key required · forecast coverage is up to 16 days."
-        )
+        if source == "MET Norway":
+            st.caption(
+                "Fallback forecast adapted from [MET Norway](https://api.met.no/) "
+                "under "
+                "[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). "
+                "Precipitation probability is not available in this fallback."
+            )
+        else:
+            st.caption(
+                "Hourly forecast by [Open-Meteo](https://open-meteo.com/) · "
+                "no API key required · forecast coverage is up to 16 days."
+            )
         return environment
 
 
