@@ -1887,10 +1887,12 @@ def check_baanreserveren_slot(browser: Any, command: dict[str, Any]) -> dict[str
         )
         return result
     finally:
-        log_worker_diagnostic(
-            f"Finished reading the calendar for {parsed_url.hostname}; "
-            "the worker will release its temporary browser context on shutdown."
-        )
+        try:
+            log_worker_diagnostic(
+                f"Finished reading the calendar for {parsed_url.hostname}."
+            )
+        finally:
+            context.close()
 
 
 def check_public_slot(
@@ -2040,7 +2042,6 @@ def check_public_slot(
                 timeout=10_000,
             )
 
-        page.wait_for_timeout(500)
         page_content = read_visible_page(page)
         result = inspect_slot(
             page_text=page_content["text"],

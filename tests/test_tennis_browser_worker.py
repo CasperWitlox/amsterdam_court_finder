@@ -61,6 +61,57 @@ class FakeBrowser:
         self.closed = True
 
 
+class FakeBaanreserverenPage(FakePage):
+    def __init__(self):
+        super().__init__()
+        self.goto_calls = 0
+
+    def set_default_timeout(self, _timeout):
+        return None
+
+    def set_default_navigation_timeout(self, _timeout):
+        return None
+
+    def route(self, _pattern, _handler):
+        return None
+
+    def goto(self, *args, **kwargs):
+        self.goto_calls += 1
+
+    def wait_for_timeout(self, _milliseconds):
+        return None
+
+    def locator(self, selector):
+        return FakeBaanreserverenLocator(self, selector)
+
+
+class FakeBaanreserverenLocator:
+    def __init__(self, page, selector):
+        self.page = page
+        self.selector = selector
+        self.first = self
+
+    def count(self):
+        return 1 if self.selector == 'input[name="password"]' else 0
+
+    def is_visible(self):
+        return self.page.goto_calls > 1
+
+
+class FakeBaanreserverenContext(FakeContext):
+    def new_page(self):
+        page = FakeBaanreserverenPage()
+        self.pages.append(page)
+        return page
+
+
+class FakeBaanreserverenBrowser(FakeBrowser):
+    def new_context(self, **kwargs):
+        context = FakeBaanreserverenContext()
+        self.contexts.append(context)
+        return context
+
+
 class FakeChromium:
     def __init__(self, browser):
         self.browser = browser
@@ -188,6 +239,37 @@ class BrowserWorkerContextTests(unittest.TestCase):
         self.assertEqual(
             result["status"],
             "Could not verify - requested date was not applied",
+        )
+        self.assertEqual(len(browser.contexts), 1)
+        self.assertEqual(browser.contexts[0].close_calls, 1)
+
+    def test_baanreserveren_context_is_closed_after_check(self):
+        browser = FakeBaanreserverenBrowser()
+        command = {
+            "url": "https://amstelpark.baanreserveren.nl/",
+            "date": "2026-11-20",
+            "start_time": "18:00",
+            "duration_minutes": 60,
+            "username": "member",
+            "password": "password",
+        }
+
+        with (
+            patch.object(
+                tennis_browser_worker,
+                "validate_baanreserveren_url",
+                side_effect=lambda url: url,
+            ),
+            patch.object(tennis_browser_worker, "log_worker_diagnostic"),
+        ):
+            result = tennis_browser_worker.check_baanreserveren_slot(
+                browser,
+                command,
+            )
+
+        self.assertEqual(
+            result["status"],
+            "Could not verify - login failed",
         )
         self.assertEqual(len(browser.contexts), 1)
         self.assertEqual(browser.contexts[0].close_calls, 1)
