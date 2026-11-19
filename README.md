@@ -28,9 +28,10 @@ service:
    [Render Dashboard](https://dashboard.render.com/), connected to this repo.
 2. Select **Docker** as the runtime and use the root `Dockerfile`. The image
    installs the app dependencies and Chromium.
-3. Set the health check path to `/_stcore/health`. Choose a service plan with
-   enough memory for Streamlit and Chromium; the free plan may be constrained
-   during browser checks.
+3. Set the health check path to `/_stcore/health`. Browser checks run one
+   Chromium process at a time to reduce memory use. The free plan's 512 MB can
+   still be tight; if the service restarts or checks fail, consider a plan with
+   at least 2 GB of RAM.
 4. Add required secrets, such as `GOOGLE_MAPS_API_KEY`, under the service's
    **Environment** settings. Do not add them to the Dockerfile or repository.
 5. After the first successful deploy, open the service's **Settings >

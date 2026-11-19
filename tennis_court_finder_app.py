@@ -2858,9 +2858,9 @@ def run_availability_checks(
         ),
         key=lambda club: club["name"] not in CREDENTIAL_CHECK_CLUBS,
     )
-    with ThreadPoolExecutor(
-        max_workers=max(1, min(len(ordered_clubs), 2))
-    ) as executor:
+    # Keep one Chromium process active at a time to avoid exhausting Render's
+    # 512 MB free-instance memory limit.
+    with ThreadPoolExecutor(max_workers=1) as executor:
         futures = {
             executor.submit(
                 check_club_availability,
