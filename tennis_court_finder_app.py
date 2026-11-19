@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from time import monotonic
@@ -25,6 +26,11 @@ import pandas as pd
 import requests
 import streamlit as st
 
+from tennis_meetandplay import (
+    check_meetandplay_availability,
+    is_meetandplay_booking_url,
+)
+
 
 ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 ROUTE_FIELD_MASK = "routes.duration"
@@ -36,6 +42,7 @@ METNO_USER_AGENT = (
     "(https://amsterdamcourtfinder.nl; "
     "https://github.com/CasperWitlox/amsterdam_court_finder)"
 )
+MEET_AND_PLAY_HTTP_CHECK_WORKERS = 3
 AMSTERDAM_TIMEZONE = ZoneInfo("Europe/Amsterdam")
 CLUB_NAMES = (
     "A.L.T.C. De Aemstelburgh",
@@ -3042,16 +3049,56 @@ def run_availability_checks(
             "status": "Too early to check",
             "reason": "The selected date is outside this club's booking window.",
         }
+    clubs_to_check = [
+        club for club in available_clubs if club not in early_clubs
+    ]
+    meetandplay_clubs = []
+    browser_club_names = set()
+    for club in clubs_to_check:
+        if is_meetandplay_booking_url(str(club.get("booking_url", ""))):
+            meetandplay_clubs.append(club)
+        else:
+            browser_club_names.add(club["name"])
+    direct_check_failures: dict[str, str] = {}
+    if meetandplay_clubs:
+        with ThreadPoolExecutor(
+            max_workers=min(
+                MEET_AND_PLAY_HTTP_CHECK_WORKERS,
+                len(meetandplay_clubs),
+            )
+        ) as executor:
+            checks = {
+                executor.submit(
+                    check_meetandplay_availability,
+                    str(club["booking_url"]),
+                    selected_date,
+                    selected_time,
+                    duration_minutes,
+                ): club
+                for club in meetandplay_clubs
+            }
+            for future in as_completed(checks):
+                club = checks[future]
+                try:
+                    response = future.result()
+                except (requests.RequestException, ValueError) as error:
+                    direct_check_failures[club["name"]] = str(error)
+                    browser_club_names.add(club["name"])
+                    continue
+                if response is None:
+                    browser_club_names.add(club["name"])
+                else:
+                    responses[club["name"]] = response
+
+    browser_clubs = [
+        club for club in clubs_to_check if club["name"] in browser_club_names
+    ]
     ordered_clubs = sorted(
-        (
-            club
-            for club in available_clubs
-            if club not in early_clubs
-        ),
+        browser_clubs,
         key=lambda club: club["name"] not in CREDENTIAL_CHECK_CLUBS,
     )
-    # Reuse one Chromium process and check clubs sequentially to stay within the
-    # Render Free memory limit without paying the browser startup cost per club.
+    # Keep Chromium checks sequential; the small HTTP checks above don't launch
+    # a browser and only fall back when the page cannot be verified directly.
     worker_secrets = tuple(
         secret
         for portal_credentials in credentials.values()
@@ -3059,15 +3106,6 @@ def run_availability_checks(
     )
     worker = None
     try:
-        if ordered_clubs:
-            try:
-                worker, _ready = start_browser_worker(worker_secrets)
-            except (OSError, RuntimeError, TimeoutError, subprocess.TimeoutExpired) as error:
-                failures.update(
-                    (club["name"], str(error)) for club in ordered_clubs
-                )
-                ordered_clubs = []
-
         for index, club in enumerate(ordered_clubs):
             if worker is None or worker["process"].poll() is not None:
                 try:
@@ -3128,7 +3166,13 @@ def run_availability_checks(
                         ),
                     }
                 else:
-                    failures[club["name"]] = str(error)
+                    direct_error = direct_check_failures.get(club["name"])
+                    failures[club["name"]] = (
+                        f"Direct Meet & Play check failed: {direct_error}; "
+                        f"browser fallback failed: {error}"
+                        if direct_error
+                        else str(error)
+                    )
                 if worker["process"].poll() is not None:
                     worker = None
     finally:

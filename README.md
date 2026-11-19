@@ -35,13 +35,13 @@ service:
    [Render Dashboard](https://dashboard.render.com/), connected to this repo.
 2. Select **Docker** as the runtime and use the root `Dockerfile`. The image
    installs the app dependencies and Chromium.
-3. Set the health check path to `/_stcore/health`. Availability checks reuse
-   one Chromium process and check clubs sequentially. Meet & Play checks reuse
-   a temporary browser context during each run so shared site assets can be
-   cached without adding concurrent browsers. Other portal contexts are closed
-   after each check to limit memory use. The free plan's 512 MB can still be
-   tight; if the service restarts or checks fail, consider a plan with at least
-   2 GB of RAM.
+3. Set the health check path to `/_stcore/health`. Meet & Play calendars are
+   checked directly from their date-specific server-rendered pages, with up to
+   three lightweight HTTP requests in parallel; unrecognized pages fall back
+   to the browser checker. Other browser checks reuse one Chromium process and
+   run sequentially, with portal contexts closed after each check to limit
+   memory use. The free plan's 512 MB can still be tight; if the service
+   restarts or checks fail, consider a plan with at least 2 GB of RAM.
 4. Add required secrets, such as `GOOGLE_MAPS_API_KEY`, and the optional
    `WEATHERAPI_API_KEY` under the service's **Environment** settings. Do not add
    them to the Dockerfile or repository.
