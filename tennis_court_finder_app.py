@@ -30,10 +30,12 @@ from tennis_meetandplay import (
     is_meetandplay_booking_url,
 )
 from tennis_ui import (
+    SUPPORTED_LANGUAGES,
     filter_club_rows,
     localize_frame,
     privacy_statement,
     translate_text,
+    translate_sort_option,
     translate_to_english,
 )
 
@@ -1448,31 +1450,49 @@ def ui_text(value: Any) -> Any:
 
 
 def format_local_date(value: date, language: str) -> str:
-    if language not in {"nl", "Nederlands"}:
+    localized_names = {
+        "Nederlands": (
+            ("maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"),
+            ("januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"),
+        ),
+        "中文 (简体)": (
+            ("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"),
+            ("一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"),
+        ),
+        "हिन्दी": (
+            ("सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार", "रविवार"),
+            ("जनवरी", "फ़रवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"),
+        ),
+        "Español": (
+            ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"),
+            ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"),
+        ),
+        "Français": (
+            ("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"),
+            ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"),
+        ),
+        "العربية": (
+            ("الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"),
+            ("يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"),
+        ),
+        "বাংলা": (
+            ("সোমবার", "মঙ্গলবার", "বুধবার", "বৃহস্পতিবার", "শুক্রবার", "শনিবার", "রবিবার"),
+            ("জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"),
+        ),
+        "Português": (
+            ("segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"),
+            ("janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"),
+        ),
+        "Русский": (
+            ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"),
+            ("января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"),
+        ),
+    }
+    if language == "nl":
+        language = "Nederlands"
+    if language not in localized_names:
         return value.strftime("%A %d %B %Y")
-    weekdays = (
-        "maandag",
-        "dinsdag",
-        "woensdag",
-        "donderdag",
-        "vrijdag",
-        "zaterdag",
-        "zondag",
-    )
-    months = (
-        "januari",
-        "februari",
-        "maart",
-        "april",
-        "mei",
-        "juni",
-        "juli",
-        "augustus",
-        "september",
-        "oktober",
-        "november",
-        "december",
-    )
+    weekdays, months = localized_names[language]
     return (
         f"{weekdays[value.weekday()]} {value.day} "
         f"{months[value.month - 1]} {value.year}"
@@ -4134,7 +4154,7 @@ def main() -> None:
     apply_dashboard_background()
     language = st.selectbox(
         "Language / Taal",
-        ("English", "Nederlands"),
+        SUPPORTED_LANGUAGES,
         key="interface_language",
         label_visibility="collapsed",
     )
@@ -4157,14 +4177,6 @@ def main() -> None:
             alt="Illustration of a tennis racket and ball",
             width="stretch",
         )
-    with st.expander(ui_text("Privacy & data")):
-        st.markdown(privacy_statement(language))
-        st.caption(
-            ui_text("This summary describes how the app currently handles data.")
-        )
-    st.caption(
-        ui_text("Club names and source-provided notes are shown in their original wording.")
-    )
     try:
         clubs = load_clubs(data_path())
     except ValueError as error:
@@ -4583,7 +4595,7 @@ def main() -> None:
                 ui_text("Sort order"),
                 list(membership_sort_options),
                 key="membership_table_sort",
-                format_func=lambda value: translate_text(value, language),
+                format_func=lambda value: translate_sort_option(value, language),
                 help=ui_text(
                     "Ranges use their lower value, and entries without a "
                     "number are placed last."
@@ -4804,6 +4816,14 @@ def main() -> None:
         alt=ui_text(
             "Stand-alone public tennis courts with neighbourhoods, addresses, surfaces, and cycling times"
         ),
+    )
+    with st.expander(ui_text("Privacy & data")):
+        st.markdown(privacy_statement(language))
+        st.caption(
+            ui_text("This summary describes how the app currently handles data.")
+        )
+    st.caption(
+        ui_text("Club names and source-provided notes are shown in their original wording.")
     )
 
 

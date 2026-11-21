@@ -3,9 +3,12 @@ import unittest
 import pandas as pd
 
 from tennis_ui import (
+    SUPPORTED_LANGUAGES,
     filter_club_rows,
     localize_frame,
     privacy_statement,
+    translate_sort_option,
+    translate_text,
     translate_to_english,
 )
 
@@ -81,6 +84,75 @@ class TennisUiTests(unittest.TestCase):
         self.assertIn("Casper Witlox / Amsterdam Court Finder", statement)
         self.assertIn("info@amsterdamcourtfinder.nl", statement)
         self.assertIn("plaatst geen reserveringen", statement)
+
+    def test_added_languages_translate_and_round_trip_interface_statuses(self):
+        expected_languages = {
+            "中文 (简体)",
+            "हिन्दी",
+            "Español",
+            "Français",
+            "العربية",
+            "বাংলা",
+            "Português",
+            "Русский",
+        }
+        self.assertTrue(expected_languages.issubset(SUPPORTED_LANGUAGES))
+
+        for language in expected_languages:
+            with self.subTest(language=language):
+                availability = translate_text("Availability", language)
+                self.assertNotEqual(availability, "Availability")
+                localized_status = translate_text(
+                    "Could not verify - Meet & Play HTTP 403",
+                    language,
+                )
+                self.assertNotEqual(localized_status, "Could not verify - Meet & Play HTTP 403")
+                self.assertEqual(
+                    translate_to_english(localized_status, language),
+                    "Could not verify - Meet & Play HTTP 403",
+                )
+                self.assertNotEqual(
+                    translate_sort_option("Courts - ascending", language),
+                    "Courts - ascending",
+                )
+                translated_recommendation = translate_text(
+                    "Indoor is preferable for cold (5°C), strong wind (38 km/h).",
+                    language,
+                )
+                self.assertNotIn(
+                    "Indoor is preferable for",
+                    translated_recommendation,
+                )
+                self.assertIn("5°C", translated_recommendation)
+                self.assertNotEqual(
+                    translate_text(
+                        "Outdoor conditions look manageable; when the choice is unclear, outdoor courts are usually cheaper.",
+                        language,
+                    ),
+                    "Outdoor conditions look manageable; when the choice is unclear, outdoor courts are usually cheaper.",
+                )
+                self.assertIn(
+                    "info@amsterdamcourtfinder.nl",
+                    privacy_statement(language),
+                )
+
+    def test_filter_value_can_be_normalized_after_switching_languages(self):
+        spanish_available = translate_text("Available", "Español")
+
+        self.assertEqual(
+            translate_to_english(spanish_available, "Français"),
+            "Available",
+        )
+
+    def test_localize_frame_translates_additional_language_table_labels(self):
+        frame = pd.DataFrame(
+            [{"Club": "Test club", "Availability": "✅ Available"}]
+        )
+
+        localized = localize_frame(frame, "Español")
+
+        self.assertIn("Disponibilidad", localized.columns)
+        self.assertEqual(localized.iloc[0]["Disponibilidad"], "✅ Disponible")
 
 
 if __name__ == "__main__":

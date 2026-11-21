@@ -6,7 +6,7 @@ A Streamlit dashboard for comparing tennis clubs in Amsterdam and checking court
 
 - [`tennis_court_finder_app.py`](./tennis_court_finder_app.py) — The main Streamlit application: displays the dashboard, club information, route and price details, and availability-check controls.
 - [`tennis_browser_worker.py`](./tennis_browser_worker.py) — Runs the browser-based checks that visit booking websites and report court availability.
-- [`tennis_ui.py`](./tennis_ui.py) — Contains Dutch UI translations, club filtering helpers, and the in-app privacy disclosure.
+- [`tennis_ui.py`](./tennis_ui.py) — Contains UI translations, club filtering helpers, and the in-app privacy disclosure.
 - [`requirements.txt`](./requirements.txt) — Lists the Python packages required to run the application.
 - [`packages.txt`](./packages.txt) — Lists Linux system packages needed by Chromium when the app is deployed on Streamlit Community Cloud.
 - [`Dockerfile`](./Dockerfile) — Builds the Render image, including Playwright's headless Chromium shell.
@@ -29,12 +29,16 @@ no-key fallback for later dates.
 
 ## Dashboard features
 
-The dashboard can be switched between English and Dutch. Shared club filters
-cover neighbourhood, booking access, court surface, availability, and cycling
-time when routes have been calculated. Club profiles summarize the current
+The dashboard offers English and Dutch, plus Mandarin Chinese, Hindi, Spanish,
+French, Arabic, Bengali, Portuguese, and Russian. Club names and
+source-provided notes remain in their original wording; some detailed
+provider-supplied text may also remain in English. Shared club filters cover
+neighbourhood, booking access, court surface, availability, and cycling time
+when routes have been calculated. Club profiles summarize the current
 availability result, prices, access details, and links to booking and club
 websites. The in-app **Privacy & data** disclosure explains session handling
-and the external services contacted by the dashboard.
+and the external services contacted by the dashboard, and appears at the
+bottom of the page.
 
 ## Deploy to Render with a custom domain
 
