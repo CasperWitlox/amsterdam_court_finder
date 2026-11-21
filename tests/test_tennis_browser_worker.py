@@ -3,7 +3,7 @@ import json
 import sys
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import tennis_browser_worker
 
@@ -134,6 +134,31 @@ class FakePlaywrightManager:
 
 
 class BrowserWorkerContextTests(unittest.TestCase):
+    def test_meetandplay_date_control_wait_is_bounded(self):
+        class FakePlaywrightTimeout(Exception):
+            pass
+
+        locator = types.SimpleNamespace(
+            wait_for=Mock(side_effect=FakePlaywrightTimeout)
+        )
+        page = types.SimpleNamespace(locator=Mock(return_value=locator))
+        fake_playwright = types.ModuleType("playwright")
+        fake_sync_api = types.ModuleType("playwright.sync_api")
+        fake_sync_api.TimeoutError = FakePlaywrightTimeout
+
+        with patch.dict(
+            sys.modules,
+            {
+                "playwright": fake_playwright,
+                "playwright.sync_api": fake_sync_api,
+            },
+        ):
+            result = tennis_browser_worker.wait_for_meetandplay_date_control(page)
+
+        self.assertFalse(result)
+        page.locator.assert_called_once_with("#date")
+        locator.wait_for.assert_called_once_with(state="visible", timeout=7_000)
+
     def test_worker_reuses_context_only_for_meetandplay_checks(self):
         browser = FakeBrowser()
         checked_contexts = []
@@ -203,6 +228,11 @@ class BrowserWorkerContextTests(unittest.TestCase):
                 side_effect=lambda url, selected_date: url,
             ),
             patch.object(tennis_browser_worker, "reject_optional_cookies"),
+            patch.object(
+                tennis_browser_worker,
+                "wait_for_meetandplay_date_control",
+                return_value=True,
+            ),
         ):
             result = tennis_browser_worker.check_public_slot(
                 browser,
@@ -233,6 +263,11 @@ class BrowserWorkerContextTests(unittest.TestCase):
                 side_effect=lambda url, selected_date: url,
             ),
             patch.object(tennis_browser_worker, "reject_optional_cookies"),
+            patch.object(
+                tennis_browser_worker,
+                "wait_for_meetandplay_date_control",
+                return_value=True,
+            ),
         ):
             result = tennis_browser_worker.check_public_slot(browser, command)
 

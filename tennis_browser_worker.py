@@ -1284,6 +1284,16 @@ def inspect_meetandplay_available_courts(
     return available_courts
 
 
+def wait_for_meetandplay_date_control(page: Any) -> bool:
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+    try:
+        page.locator("#date").wait_for(state="visible", timeout=7_000)
+    except PlaywrightTimeoutError:
+        return False
+    return True
+
+
 def inspect_usc_available_courts(labels: list[str]) -> list[dict[str, str]]:
     courts = []
     for value in labels:
@@ -1933,7 +1943,14 @@ def check_public_slot(
             wait_until="domcontentloaded",
             timeout=45_000,
         )
-        page.locator("#date").wait_for(state="visible", timeout=25_000)
+        if not wait_for_meetandplay_date_control(page):
+            return {
+                "status": "Could not verify - calendar date control did not load",
+                "reason": (
+                    "Meet & Play did not show its calendar date control within "
+                    "7 seconds."
+                ),
+            }
         page.wait_for_timeout(700)
         reject_optional_cookies(page)
 

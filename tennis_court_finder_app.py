@@ -42,7 +42,7 @@ METNO_USER_AGENT = (
     "(https://amsterdamcourtfinder.nl; "
     "https://github.com/CasperWitlox/amsterdam_court_finder)"
 )
-MEET_AND_PLAY_HTTP_CHECK_WORKERS = 3
+MEET_AND_PLAY_HTTP_CHECK_WORKERS = 2
 AMSTERDAM_TIMEZONE = ZoneInfo("Europe/Amsterdam")
 CLUB_NAMES = (
     "A.L.T.C. De Aemstelburgh",

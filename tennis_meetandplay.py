@@ -64,7 +64,25 @@ def check_meetandplay_availability(
         headers={"Accept": "text/html"},
         timeout=(3, 6),
     )
-    response.raise_for_status()
+    if response.status_code >= 400:
+        if response.status_code == 429:
+            return {
+                "status": "Could not verify - Meet & Play rate limited",
+                "reason": (
+                    "Meet & Play temporarily rejected the availability request "
+                    "with HTTP 429. Try again later."
+                ),
+            }
+        return {
+            "status": (
+                "Could not verify - Meet & Play returned "
+                f"HTTP {response.status_code}"
+            ),
+            "reason": (
+                "Meet & Play did not return a readable calendar. "
+                f"The booking page returned HTTP {response.status_code}."
+            ),
+        }
 
     response_url = urlparse(response.url)
     if (
@@ -83,11 +101,18 @@ def check_meetandplay_availability(
     if (
         not isinstance(data, dict)
         or not isinstance(memo, dict)
-        or data.get("date") != selected_date.strftime("%d-%m-%Y")
         or str(memo.get("path", "")).lstrip("/")
         != parsed_url.path.lstrip("/")
-        or not _is_tennis_selected(soup, data.get("tenantSportId"))
     ):
+        return None
+    if data.get("date") != selected_date.strftime("%d-%m-%Y"):
+        return {
+            "status": "Could not verify - requested date was not applied",
+            "reason": (
+                "Meet & Play did not render the date selected in the dashboard."
+            ),
+        }
+    if not _is_tennis_selected(soup, data.get("tenantSportId")):
         return None
 
     court_sections = soup.select(".mp-court-type")

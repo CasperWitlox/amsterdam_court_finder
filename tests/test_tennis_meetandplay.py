@@ -1,17 +1,21 @@
 import unittest
 from datetime import date, time
+from unittest.mock import Mock
 from unittest.mock import patch
 
+import requests
 import tennis_meetandplay
 
 
 class FakeResponse:
-    def __init__(self, text, url):
+    def __init__(self, text, url, status_code=200):
         self.text = text
         self.url = url
+        self.status_code = status_code
 
     def raise_for_status(self):
-        return None
+        if self.status_code >= 400:
+            raise requests.HTTPError(response=self)
 
 
 def calendar_html(
@@ -114,10 +118,35 @@ class MeetAndPlayDirectCheckTests(unittest.TestCase):
         self.assertIn("date=2026-11-20", get.call_args.args[0])
         self.assertEqual(get.call_args.kwargs["timeout"], (3, 6))
 
-    def test_date_or_sport_mismatch_uses_browser_fallback(self):
-        self.assertIsNone(
-            self.check_page(calendar_html(selected_date="21-11-2026"))
+    def test_http_429_is_reported_without_browser_fallback(self):
+        response = FakeResponse(
+            "",
+            f"{self.booking_url}?date=2026-11-20",
+            status_code=429,
         )
+        with patch.object(tennis_meetandplay.requests, "get", return_value=response):
+            result = tennis_meetandplay.check_meetandplay_availability(
+                self.booking_url,
+                self.selected_date,
+                self.selected_time,
+                60,
+            )
+
+        self.assertEqual(
+            result["status"],
+            "Could not verify - Meet & Play rate limited",
+        )
+        self.assertIn("HTTP 429", result["reason"])
+
+    def test_date_mismatch_is_reported_without_browser_fallback(self):
+        result = self.check_page(calendar_html(selected_date="21-11-2026"))
+
+        self.assertEqual(
+            result["status"],
+            "Could not verify - requested date was not applied",
+        )
+
+    def test_sport_mismatch_uses_browser_fallback(self):
         self.assertIsNone(
             self.check_page(calendar_html(sport_id="2"))
         )
