@@ -29,6 +29,13 @@ from tennis_meetandplay import (
     check_meetandplay_availability,
     is_meetandplay_booking_url,
 )
+from tennis_ui import (
+    filter_club_rows,
+    localize_frame,
+    privacy_statement,
+    translate_text,
+    translate_to_english,
+)
 
 
 ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
@@ -1433,6 +1440,45 @@ st.set_page_config(
 )
 
 
+def ui_text(value: Any) -> Any:
+    return translate_text(
+        value,
+        st.session_state.get("interface_language", "English"),
+    )
+
+
+def format_local_date(value: date, language: str) -> str:
+    if language not in {"nl", "Nederlands"}:
+        return value.strftime("%A %d %B %Y")
+    weekdays = (
+        "maandag",
+        "dinsdag",
+        "woensdag",
+        "donderdag",
+        "vrijdag",
+        "zaterdag",
+        "zondag",
+    )
+    months = (
+        "januari",
+        "februari",
+        "maart",
+        "april",
+        "mei",
+        "juni",
+        "juli",
+        "augustus",
+        "september",
+        "oktober",
+        "november",
+        "december",
+    )
+    return (
+        f"{weekdays[value.weekday()]} {value.day} "
+        f"{months[value.month - 1]} {value.year}"
+    )
+
+
 def data_path() -> Path:
     default_root = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
     return Path(
@@ -2013,14 +2059,16 @@ def show_amsterdam_weather(
         border=True,
         key="amsterdam_weather_forecast",
     ):
-        st.markdown("**Amsterdam weather forecast**")
+        st.markdown(f"**{ui_text('Amsterdam weather forecast')}**")
         if selected_date < amsterdam_today:
-            st.caption("A forecast is not available for a past date.")
+            st.caption(ui_text("A forecast is not available for a past date."))
             return
         if selected_date > forecast_end:
             st.caption(
-                "The weather service provides forecasts up to 16 days ahead. "
-                "A forecast for this date is not available yet."
+                ui_text(
+                    "The weather service provides forecasts up to 16 days ahead. "
+                    "A forecast for this date is not available yet."
+                )
             )
             return
 
@@ -2031,7 +2079,9 @@ def show_amsterdam_weather(
         try:
             hourly = amsterdam_hourly_forecast()
         except (requests.RequestException, ValueError) as error:
-            st.warning(f"Could not load the Amsterdam weather forecast: {error}")
+            st.warning(
+                f"{ui_text('Could not load the Amsterdam weather forecast:')} {error}"
+            )
             return
 
         sources = hourly.get("sources")
@@ -2068,15 +2118,19 @@ def show_amsterdam_weather(
             )
             if index < 0:
                 st.caption(
-                    "A forecast is not available for that time. Open-Meteo covers "
-                    "up to 16 days; the fallback forecasts cover fewer days."
+                    ui_text(
+                        "A forecast is not available for that time. Open-Meteo covers "
+                        "up to 16 days; the fallback forecasts cover fewer days."
+                    )
                 )
                 return
 
         if index < 0:
             st.caption(
-                "A forecast is not available for that hour yet. "
-                "Choose a future time or check again later."
+                ui_text(
+                    "A forecast is not available for that hour yet. "
+                    "Choose a future time or check again later."
+                )
             )
             return
 
@@ -2114,24 +2168,28 @@ def show_amsterdam_weather(
             )
         metric_columns = st.columns(4)
         metric_columns[0].metric(
-            "Temperature",
+            ui_text("Temperature"),
             f"{temperature:.0f} °C" if isinstance(temperature, (int, float)) else "—",
         )
         metric_columns[1].metric(
-            "Precipitation chance",
+            ui_text("Precipitation chance"),
             f"{precipitation:.0f}%" if isinstance(precipitation, (int, float)) else "—",
         )
         metric_columns[2].metric(
-            "Wind",
+            ui_text("Wind"),
             f"{wind_speed:.0f} km/h" if isinstance(wind_speed, (int, float)) else "—",
         )
         interval_hours = hourly.get("interval_hours", [1])[index]
         metric_columns[3].metric(
-            "Expected rainfall"
+            ui_text("Expected rainfall")
             if interval_hours == 1
-            else f"Expected rainfall ({interval_hours}-hour period)",
+            else ui_text(
+                f"Expected rainfall ({interval_hours}-hour period)"
+            ),
             f"{rainfall:.1f} mm" if isinstance(rainfall, (int, float)) else "—",
-            help="Forecast rainfall for the selected hour or forecast period.",
+            help=ui_text(
+                "Forecast rainfall for the selected hour or forecast period."
+            ),
         )
         recommendation = recommend_court_environment(
             temperature,
@@ -2141,7 +2199,10 @@ def show_amsterdam_weather(
         )
         if recommendation is not None:
             environment, explanation = recommendation
-            st.markdown(f"**Recommended court: {environment}.** {explanation}")
+            st.markdown(
+                f"**{ui_text('Recommended court:')} {ui_text(environment)}.** "
+                f"{ui_text(explanation)}"
+            )
         else:
             environment = None
         if source == "MET Norway":
@@ -2502,14 +2563,26 @@ def style_club_rows(
     frame: pd.DataFrame,
     recommended_environment: str | None = None,
     all_rows_gray: bool = False,
+    language: str = "English",
 ) -> pd.io.formats.style.Styler:
+    def column_name(english_name: str) -> str:
+        return str(translate_text(english_name, language))
+
+    def english_value(value: Any) -> str:
+        return str(translate_to_english(value, language))
+
     def row_color(row: pd.Series) -> list[str]:
-        availability = str(row.get("Availability", ""))
-        waiting_list = str(row.get("Waiting list", "")).strip().casefold()
+        availability = english_value(row.get(column_name("Availability"), ""))
+        waiting_list = english_value(
+            row.get(column_name("Waiting list"), "")
+        ).strip().casefold()
         has_waiting_list_status = waiting_list.startswith(("yes", "no"))
         if (
             all_rows_gray
-            or str(row.get("Booking access", "")).casefold() == "members only"
+            or english_value(
+                row.get(column_name("Booking access"), "")
+            ).casefold()
+            == "members only"
             or availability.startswith("Could not verify")
             or availability.startswith("Not checked")
             or availability.startswith("Not configured")
@@ -2529,9 +2602,9 @@ def style_club_rows(
             row_color_value = ""
         colors = [row_color_value] * len(row)
 
-        cycling_time = str(row.get("Cycling time", ""))
+        cycling_time = english_value(row.get(column_name("Cycling time"), ""))
         match = re.match(r"(\d+)\s+min\b", cycling_time)
-        if match and "Cycling time" in row.index:
+        if match and column_name("Cycling time") in row.index:
             minutes = int(match.group(1))
             if minutes <= 15:
                 cycling_style = "#DDF2DF"
@@ -2543,18 +2616,18 @@ def style_club_rows(
                 cycling_style = "#F8DEDA"
                 cycling_text_color = "#A93226"
             if has_waiting_list_status:
-                colors[row.index.get_loc("Cycling time")] = (
+                colors[row.index.get_loc(column_name("Cycling time"))] = (
                     f"{row_color_value}; color: {cycling_text_color}; "
                     "font-weight: bold"
                 )
             else:
-                colors[row.index.get_loc("Cycling time")] = (
+                colors[row.index.get_loc(column_name("Cycling time"))] = (
                     f"background-color: {cycling_style}"
                 )
-        if "Senior membership price" in row.index:
+        if column_name("Senior membership price") in row.index:
             price_match = re.search(
                 r"€\s*(\d+(?:[.,]\d{1,2})?)",
-                str(row["Senior membership price"]),
+                str(row[column_name("Senior membership price")]),
             )
             if price_match:
                 price = float(price_match.group(1).replace(",", "."))
@@ -2565,15 +2638,15 @@ def style_club_rows(
                     if price <= 275
                     else "#A93226"
                 )
-                colors[row.index.get_loc("Senior membership price")] = (
+                colors[row.index.get_loc(column_name("Senior membership price"))] = (
                     f"{row_color_value}; color: {price_color}; font-weight: bold"
                     if has_waiting_list_status
                     else f"color: {price_color}; font-weight: bold"
                 )
-        if "Ratio (members/court)" in row.index:
+        if column_name("Ratio (members/court)") in row.index:
             ratio_match = re.search(
                 r"\d+",
-                str(row["Ratio (members/court)"]),
+                str(row[column_name("Ratio (members/court)")]),
             )
             if ratio_match:
                 ratio = int(ratio_match.group())
@@ -2584,15 +2657,17 @@ def style_club_rows(
                     if ratio <= 150
                     else ("#F8DEDA", "#A93226")
                 )
-                colors[row.index.get_loc("Ratio (members/court)")] = (
+                colors[row.index.get_loc(column_name("Ratio (members/court)"))] = (
                     f"background-color: {ratio_background}; "
                     f"color: {ratio_text}; font-weight: bold"
                 )
-        court_types = str(row.get("Available type", "")).casefold()
+        court_types = english_value(
+            row.get(column_name("Available type"), "")
+        ).casefold()
         has_outdoor = "outdoor" in court_types
         has_indoor = "indoor" in court_types
         recommended = (
-            recommended_environment.casefold()
+            english_value(recommended_environment).casefold()
             if isinstance(recommended_environment, str)
             else ""
         )
@@ -2605,14 +2680,240 @@ def style_club_rows(
                 or (recommended == "indoor" and has_indoor)
             )
             and (has_outdoor or has_indoor)
-            and "Available type" in row.index
+            and column_name("Available type") in row.index
         ):
-            colors[row.index.get_loc("Available type")] = (
+            colors[row.index.get_loc(column_name("Available type"))] = (
                 "background-color: #FCE9E7"
             )
         return colors
 
     return frame.style.apply(row_color, axis=1)
+
+
+def filter_club_comparison(
+    comparison: pd.DataFrame,
+    language: str,
+) -> pd.DataFrame:
+    with st.expander(ui_text("Filter clubs"), expanded=False):
+        neighborhoods = sorted(
+            {
+                str(value)
+                for value in comparison["Neighbourhood"]
+                if value and str(value) != "Not specified"
+            },
+            key=str.casefold,
+        )
+        access_options = sorted(
+            {str(value) for value in comparison["Booking access"]},
+            key=str.casefold,
+        )
+        surface_categories_by_club = {
+            str(row["Club"]): set(
+                court_surface_categories(str(row["Court surface"]))
+            )
+            for _, row in comparison.iterrows()
+        }
+        surface_options = sorted(
+            {
+                surface
+                for values in surface_categories_by_club.values()
+                for surface in values
+            },
+            key=str.casefold,
+        )
+        first_row, second_row = st.columns(2)
+        with first_row:
+            selected_neighborhoods = st.multiselect(
+                ui_text("Neighbourhoods"),
+                neighborhoods,
+                key="filter_neighbourhoods",
+            )
+            selected_surfaces = st.multiselect(
+                ui_text("Court surfaces"),
+                surface_options,
+                format_func=lambda value: translate_text(value, language),
+                key="filter_court_surfaces",
+            )
+        with second_row:
+            selected_access = st.multiselect(
+                ui_text("Booking access"),
+                access_options,
+                format_func=lambda value: translate_text(value, language),
+                key="filter_booking_access",
+            )
+            availability_options = (
+                "All availability",
+                "Available",
+                "Unavailable",
+                "Could not verify",
+                "Too early to check",
+                "Not checked",
+                "Other status",
+            )
+            current_availability = translate_to_english(
+                st.session_state.get("filter_availability", "All availability"),
+                "Nederlands",
+            )
+            if current_availability not in availability_options:
+                current_availability = "All availability"
+            localized_availability_options = [
+                translate_text(value, language)
+                for value in availability_options
+            ]
+            st.session_state["filter_availability"] = translate_text(
+                current_availability,
+                language,
+            )
+            selected_availability_label = st.selectbox(
+                ui_text("Availability filter"),
+                localized_availability_options,
+                key="filter_availability",
+            )
+            selected_availability = translate_to_english(
+                selected_availability_label,
+                language,
+            )
+
+        calculated_times = [
+            int(match.group(1))
+            for value in comparison["Cycling time"]
+            if (match := re.match(r"(\d+)\s+min\b", str(value)))
+        ]
+        max_cycling_minutes = None
+        if calculated_times:
+            maximum_time = max(5, max(calculated_times))
+            current_maximum = st.session_state.get(
+                "filter_max_cycling_minutes",
+                maximum_time,
+            )
+            if (
+                not isinstance(current_maximum, int)
+                or not 5 <= current_maximum <= maximum_time
+            ):
+                st.session_state["filter_max_cycling_minutes"] = maximum_time
+            max_cycling_minutes = st.slider(
+                ui_text("Maximum cycling time (minutes)"),
+                min_value=5,
+                max_value=maximum_time,
+                value=maximum_time,
+                step=1,
+                key="filter_max_cycling_minutes",
+            )
+        else:
+            st.caption(ui_text("Calculate cycling times to enable the cycling-time filter."))
+
+    filtered_rows = filter_club_rows(
+        comparison.to_dict(orient="records"),
+        neighborhoods=set(selected_neighborhoods),
+        booking_access=set(selected_access),
+        court_surfaces=set(selected_surfaces),
+        surface_categories_by_club=surface_categories_by_club,
+        availability=selected_availability,
+        max_cycling_minutes=max_cycling_minutes,
+    )
+    filtered_names = {str(row["Club"]) for row in filtered_rows}
+    filtered = comparison[comparison["Club"].isin(filtered_names)].copy()
+    st.caption(
+        ui_text("Showing {shown} of {total} clubs.").format(
+            shown=len(filtered),
+            total=len(comparison),
+        )
+    )
+    if filtered.empty:
+        st.info(ui_text("No clubs match these filters."))
+    return filtered
+
+
+def show_club_profile(
+    clubs: list[dict[str, Any]],
+    comparison: pd.DataFrame,
+    requested_slot: str,
+    availability_results: dict[str, dict[str, Any]],
+    language: str,
+) -> None:
+    st.subheader(ui_text("Club profiles"))
+    if comparison.empty:
+        return
+    names = comparison["Club"].tolist()
+    if st.session_state.get("club_profile_selection", "") not in [""] + names:
+        st.session_state.pop("club_profile_selection", None)
+    selected_name = st.selectbox(
+        ui_text("Choose a club"),
+        [""] + names,
+        key="club_profile_selection",
+    )
+    if not selected_name:
+        return
+
+    club = next(item for item in clubs if item["name"] == selected_name)
+    row = comparison.loc[comparison["Club"] == selected_name].iloc[0]
+    with st.container(border=True):
+        st.markdown(f"### {selected_name}")
+        address = str(club.get("address", "")).strip()
+        neighborhood = str(club.get("neighborhood", "")).strip()
+        st.caption(" · ".join(value for value in (address, neighborhood) if value))
+        st.markdown(
+            f"**{ui_text('Availability')}:** "
+            f"{translate_text(row['Availability'], language)}"
+        )
+        st.markdown(
+            f"**{ui_text('Cycling time')}:** "
+            f"{translate_text(row['Cycling time'], language)}"
+        )
+        if (
+            availability_results.get(selected_name, {}).get("slot_key")
+            == requested_slot
+        ):
+            checked_at = availability_results[selected_name].get("checked_at")
+            if checked_at:
+                st.caption(f"{ui_text('Last checked')}: {checked_at}")
+            courts = availability_results[selected_name].get(
+                "available_courts",
+                [],
+            )
+            court_names = [
+                str(court.get("name", "")).strip()
+                for court in courts
+                if isinstance(court, dict) and court.get("name")
+            ]
+            if court_names:
+                st.markdown(
+                    f"**{ui_text('Available courts')}:** "
+                    + ", ".join(court_names)
+                )
+        st.caption(
+            ui_text(
+                "Availability can change; confirm the slot on the club's booking page."
+            )
+        )
+
+        details = (
+            ("Booking access", row["Booking access"]),
+            ("Booking platform", club.get("booking_platform") or "Not specified"),
+            ("Price / court / hour (€)", club.get("price_info") or "Not listed"),
+            ("Membership price", row["Membership price"]),
+            ("Court surface", club.get("court_type") or "Not listed"),
+            ("Waiting list", row["Waiting list"]),
+            ("Other info", club.get("other_notes") or "Not listed"),
+        )
+        first_column, second_column = st.columns(2)
+        for index, (label, value) in enumerate(details):
+            target_column = first_column if index % 2 == 0 else second_column
+            with target_column:
+                st.markdown(
+                    f"**{ui_text(label)}:** {translate_text(str(value), language)}"
+                )
+        buttons = st.container(horizontal=True)
+        if club.get("booking_url"):
+            buttons.link_button(
+                ui_text("Open booking page"),
+                club["booking_url"],
+            )
+        if club.get("club_website"):
+            buttons.link_button(
+                ui_text("Official club website"),
+                club["club_website"],
+            )
 
 
 def release_browser_worker_registry(
@@ -3288,14 +3589,14 @@ def booking_browser_controls(
         )
         return False
     return action_column.button(
-        "Check availability",
+        ui_text("Check availability"),
         key="check_all_booking_availability",
         type="primary",
     )
 
 
 def availability_search_explanation() -> None:
-    with st.expander("How availability is checked"):
+    with st.expander(ui_text("How availability is checked")):
         st.markdown(
             "Choose a date, start time and session length, then select **Check "
             "availability**. The dashboard checks the "
@@ -3831,16 +4132,24 @@ def apply_dashboard_background() -> None:
 
 def main() -> None:
     apply_dashboard_background()
+    language = st.selectbox(
+        "Language / Taal",
+        ("English", "Nederlands"),
+        key="interface_language",
+        label_visibility="collapsed",
+    )
     title_column, image_column = st.columns([0.78, 0.22], vertical_alignment="center")
     with title_column:
         st.title("Amsterdam Court Finder", icon=":material/sports_tennis:")
         st.markdown(
-            "Trouble finding the right tennis club for you? No worries, we've got "
-            "your back. Explore clubs across Amsterdam, whether you're looking for "
-            "an occasional match or a longer-term commitment. Compare locations, "
-            "cycling times and prices, explore membership options, and check "
-            "availability for your chosen date, time and session length—all in "
-            "one place."
+            ui_text(
+                "Trouble finding the right tennis club for you? No worries, we've got "
+                "your back. Explore clubs across Amsterdam, whether you're looking for "
+                "an occasional match or a longer-term commitment. Compare locations, "
+                "cycling times and prices, explore membership options, and check "
+                "availability for your chosen date, time and session length—all in "
+                "one place."
+            )
         )
     with image_column:
         st.image(
@@ -3848,6 +4157,14 @@ def main() -> None:
             alt="Illustration of a tennis racket and ball",
             width="stretch",
         )
+    with st.expander(ui_text("Privacy & data")):
+        st.markdown(privacy_statement(language))
+        st.caption(
+            ui_text("This summary describes how the app currently handles data.")
+        )
+    st.caption(
+        ui_text("Club names and source-provided notes are shown in their original wording.")
+    )
     try:
         clubs = load_clubs(data_path())
     except ValueError as error:
@@ -3881,7 +4198,7 @@ def main() -> None:
     if "route_group_feedback" not in st.session_state:
         st.session_state["route_group_feedback"] = {}
 
-    st.subheader("🔓 Public (non-member) clubs")
+    st.subheader(ui_text("🔓 Public (non-member) clubs"))
     today = date.today()
     next_day = today + timedelta(days=1)
     controls_column, weather_column = st.columns(
@@ -3891,30 +4208,30 @@ def main() -> None:
     )
     with controls_column:
         selected_date = st.date_input(
-            "Booking date",
+            ui_text("Booking date"),
             value=next_day,
             min_value=today,
             key="booking_date",
         )
         selected_time = st.time_input(
-            "Start time",
+            ui_text("Start time"),
             value=time(18, 0),
             step=timedelta(minutes=15),
             key="booking_start_time",
         )
         with st.container(horizontal=True, vertical_alignment="bottom"):
             duration_minutes = st.segmented_control(
-                "Duration",
+                ui_text("Duration"),
                 options=(60, 90),
                 default=60,
-                format_func=lambda minutes: f"{minutes} minutes",
+                format_func=lambda minutes: f"{minutes} {ui_text('minutes')}",
                 key="duration_minutes",
             )
             include_credentials_required = st.toggle(
-                "Include sign-in-required clubs",
+                ui_text("Include sign-in-required clubs"),
                 value=True,
                 key="include_credentials_required_clubs",
-                help=(
+                help=ui_text(
                     "Include USC, Frans Otten Stadion, and Amstelpark "
                     "Tennisclub in the public-club table and availability checks."
                 ),
@@ -3922,7 +4239,8 @@ def main() -> None:
         start = datetime.combine(selected_date, selected_time)
         end = start + timedelta(minutes=duration_minutes)
         st.caption(
-            f"Requested slot: 1 court · {start:%A %d %B %Y} · "
+            f"{ui_text('Requested slot')}: 1 {ui_text('court')} · "
+            f"{format_local_date(start.date(), language)} · "
             f"{start:%H:%M}–{end:%H:%M}"
         )
     with weather_column:
@@ -3945,23 +4263,23 @@ def main() -> None:
                 st,
             )
         if st.button(
-            "Calculate cycling times",
+            ui_text("Calculate cycling times"),
             key="calculate_public_routes",
         ):
             origin = st.session_state.get("home_address", "").strip()
             api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
             if origin and st.session_state.get("route_address_consent") and api_key:
-                with st.spinner("Calculating public-club cycling times..."):
+                with st.spinner(ui_text("Calculating public-club cycling times...")):
                     calculate_route_group(clubs, "public", origin, api_key)
             else:
                 cycling_time_setup_dialog(clubs, "public")
         show_public_surface = st.button(
-            "Court surface info",
+            ui_text("Court surface info"),
             key="public_court_surface_info",
         )
         if saved_credentials:
             if st.button(
-                "Update credentials",
+                ui_text("Update credentials"),
                 key="update_booking_credentials",
             ):
                 available_clubs = [
@@ -3974,14 +4292,14 @@ def main() -> None:
                     int(duration_minutes),
                 )
             if st.button(
-                "Forget saved credentials",
+                ui_text("Forget saved credentials"),
                 key="forget_booking_credentials",
             ):
                 st.session_state.pop("availability_portal_credentials", None)
                 st.rerun()
         if st.session_state.get("home_address", "").strip():
             if st.button(
-                "Forget street address",
+                ui_text("Forget street address"),
                 key="forget_home_address",
             ):
                 st.session_state["home_address"] = ""
@@ -4007,7 +4325,9 @@ def main() -> None:
         if saved_credentials or not include_credentials_required:
             st.session_state["availability_check_started"] = True
             try:
-                with st.spinner("Checking all public (non-member) clubs..."):
+                with st.spinner(
+                    ui_text("Checking all public (non-member) clubs...")
+                ):
                     run_availability_checks(
                         available_clubs,
                         selected_date,
@@ -4039,7 +4359,11 @@ def main() -> None:
         if club_name not in MANUAL_ONLY_AVAILABILITY_CLUBS:
             st.error(f"Could not check {club_name}: {error}")
     if saved_credentials:
-        st.caption("Booking-portal credentials are available for this app session.")
+        st.caption(
+            ui_text(
+                "Booking-portal credentials are available for this app session."
+            )
+        )
 
     requested_slot = booking_slot_key(
         selected_date,
@@ -4053,6 +4377,14 @@ def main() -> None:
         st.session_state["route_origin"],
         st.session_state["availability_results"],
         requested_slot,
+    )
+    comparison = filter_club_comparison(comparison, language)
+    show_club_profile(
+        clubs,
+        comparison,
+        requested_slot,
+        st.session_state["availability_results"],
+        language,
     )
     public_clubs = comparison[
         comparison["Booking access"] != "Members only"
@@ -4157,29 +4489,44 @@ def main() -> None:
         if public_feedback["kind"] == "success":
             st.success(public_feedback["message"])
         else:
-            st.error(public_feedback["message"], title="Cycling-time calculation failed")
+            st.error(
+                public_feedback["message"],
+                title=ui_text("Cycling-time calculation failed"),
+            )
         for failure in public_feedback["failures"]:
             st.warning(failure)
+    localized_public_clubs = localize_frame(public_clubs, language)
     st.dataframe(
-        style_club_rows(public_clubs, recommended_environment),
+        style_club_rows(
+            localized_public_clubs,
+            recommended_environment,
+            language=language,
+        ),
         hide_index=True,
-        alt="Public tennis clubs with availability, cycling time, prices, court surface, booking pages, and other information",
+        alt=ui_text(
+            "Public tennis clubs with availability, cycling time, prices, court surface, booking pages, and other information"
+        ),
         column_config={
-            "Available type": st.column_config.TextColumn(
-                "Available type",
-                help="Types of court available for the selected time, including outdoor, indoor, or covered.",
+            ui_text("Available type"): st.column_config.TextColumn(
+                ui_text("Available type"),
+                help=ui_text(
+                    "Types of court available for the selected time, including outdoor, indoor, or covered."
+                ),
             ),
-            "Booking page": st.column_config.LinkColumn(
-                "Booking page", display_text="Open booking page"
+            ui_text("Booking page"): st.column_config.LinkColumn(
+                ui_text("Booking page"),
+                display_text=ui_text("Open booking page"),
             ),
         },
     )
     availability_search_explanation()
 
-    st.subheader("🔒 Membership options")
+    st.subheader(ui_text("🔒 Membership options"))
     st.write(
-        "Looking for a longer-term commitment? Explore these club senior "
-        "membership options below."
+        ui_text(
+            "Looking for a longer-term commitment? Explore these club senior "
+            "membership options below."
+        )
     )
     if st.session_state.get("membership_table_sort") == "Default order":
         st.session_state["membership_table_sort"] = (
@@ -4205,13 +4552,15 @@ def main() -> None:
     }
     with st.container(horizontal=True, gap="small", vertical_alignment="bottom"):
         if st.button(
-            "Calculate cycling times",
+            ui_text("Calculate cycling times"),
             key="calculate_members_routes",
         ):
             origin = st.session_state.get("home_address", "").strip()
             api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
             if origin and st.session_state.get("route_address_consent") and api_key:
-                with st.spinner("Calculating cycling times for both tables..."):
+                with st.spinner(
+                    ui_text("Calculating cycling times for both tables...")
+                ):
                     calculate_route_group(
                         clubs,
                         "membership_options",
@@ -4221,20 +4570,21 @@ def main() -> None:
             else:
                 cycling_time_setup_dialog(clubs, "membership_options")
         if st.button(
-            "Court surface info",
+            ui_text("Court surface info"),
             key="membership_court_surface_info",
         ):
             show_court_surface_info(members_only_clubs)
         with st.popover(
-            "Sort table by",
+            ui_text("Sort table by"),
             type="secondary",
             key="membership_table_sort_popover",
         ):
             membership_sort = st.selectbox(
-                "Sort order",
+                ui_text("Sort order"),
                 list(membership_sort_options),
                 key="membership_table_sort",
-                help=(
+                format_func=lambda value: translate_text(value, language),
+                help=ui_text(
                     "Ranges use their lower value, and entries without a "
                     "number are placed last."
                 ),
@@ -4288,20 +4638,24 @@ def main() -> None:
         else:
             st.error(
                 members_feedback["message"],
-                title="Cycling-time calculation failed",
+                title=ui_text("Cycling-time calculation failed"),
             )
         for failure in members_feedback["failures"]:
             st.warning(failure)
     st.caption(
-        "Row background: green = no waiting list; red = waiting list. "
-        "Senior membership-price text: green ≤ €200, amber €201–€275, red > €275; "
-        "cycling-time text retains its travel-time color coding."
+        ui_text(
+            "Row background: green = no waiting list; red = waiting list. "
+            "Senior membership-price text: green ≤ €200, amber €201–€275, red > €275; "
+            "cycling-time text retains its travel-time color coding."
+        )
     )
     st.caption(
-        "Members per court: green ≤75, yellow 76–150, red >150. "
-        "Club membership and court figures are approximate where noted. "
-        "The Dutch tennis federation (KNLTB) uses 60 to 90 members per lit "
-        "outdoor court as a healthy guideline."
+        ui_text(
+            "Members per court: green ≤75, yellow 76–150, red >150. "
+            "Club membership and court figures are approximate where noted. "
+            "The Dutch tennis federation (KNLTB) uses 60 to 90 members per lit "
+            "outdoor court as a healthy guideline."
+        )
     )
     sort_column, ascending = membership_sort_options[membership_sort]
     members_only_clubs = members_only_clubs.assign(
@@ -4314,39 +4668,46 @@ def main() -> None:
         na_position="last",
         kind="stable",
     ).drop(columns="_numeric_sort")
+    localized_members_only_clubs = localize_frame(members_only_clubs, language)
     st.dataframe(
-        style_club_rows(members_only_clubs),
+        style_club_rows(
+            localized_members_only_clubs,
+            language=language,
+        ),
         hide_index=True,
-        alt="Tennis clubs with membership access, prices, cycling times, guest policies, waiting lists, and club websites",
+        alt=ui_text(
+            "Tennis clubs with membership access, prices, cycling times, guest policies, waiting lists, and club websites"
+        ),
         column_config={
-            "Club site": st.column_config.LinkColumn(
-                "Club site", display_text="Open club site"
+            ui_text("Club site"): st.column_config.LinkColumn(
+                ui_text("Club site"),
+                display_text=ui_text("Open club site"),
             ),
-            "Ratio (members/court)": st.column_config.TextColumn(
-                "Ratio (members/court)",
-                help=(
+            ui_text("Ratio (members/court)"): st.column_config.TextColumn(
+                ui_text("Ratio (members/court)"),
+                help=ui_text(
                     "Approximate members per tennis court. Green ≤75, yellow "
                     "76–150, red >150; ranges use their lower value for coloring. "
                     "Use Sort table by for numeric sorting."
                 ),
             ),
-            "Members (approx.)": st.column_config.TextColumn(
-                "Members (approx.)",
-                help=(
+            ui_text("Members (approx.)"): st.column_config.TextColumn(
+                ui_text("Members (approx.)"),
+                help=ui_text(
                     "Use the Sort table by control for numeric sorting; "
                     "ranges use their lower value."
                 ),
             ),
-            "Courts": st.column_config.TextColumn(
-                "Courts",
-                help=(
+            ui_text("Courts"): st.column_config.TextColumn(
+                ui_text("Courts"),
+                help=ui_text(
                     "Use the Sort table by control for numeric sorting; "
                     "ranges use their lower value."
                 ),
             ),
-            "Introducé price": st.column_config.TextColumn(
-                "Introducé price",
-                help=(
+            ui_text("Introducé price"): st.column_config.TextColumn(
+                ui_text("Introducé price"),
+                help=ui_text(
                     "Use Sort table by for numeric sorting; price ranges use "
                     "their lower amount."
                 ),
@@ -4355,19 +4716,23 @@ def main() -> None:
     )
 
 
-    st.subheader("Stand-alone courts")
+    st.subheader(ui_text("Stand-alone courts"))
     st.write(
-        "Last-minute plans? Try one of Amsterdam's stand-alone courts. "
-        "These courts cannot be booked in advance."
+        ui_text(
+            "Last-minute plans? Try one of Amsterdam's stand-alone courts. "
+            "These courts cannot be booked in advance."
+        )
     )
     if st.button(
-        "Calculate cycling times",
+        ui_text("Calculate cycling times"),
         key="calculate_single_court_routes",
     ):
         origin = st.session_state.get("home_address", "").strip()
         api_key = os.environ.get("GOOGLE_MAPS_API_KEY", "").strip()
         if origin and st.session_state.get("route_address_consent") and api_key:
-            with st.spinner("Calculating cycling times for single courts..."):
+            with st.spinner(
+                ui_text("Calculating cycling times for single courts...")
+            ):
                 calculate_route_group(
                     list(SINGLE_NOT_FOR_RENT_COURTS),
                     "single_courts",
@@ -4389,7 +4754,7 @@ def main() -> None:
         else:
             st.error(
                 single_court_feedback["message"],
-                title="Cycling-time calculation failed",
+                title=ui_text("Cycling-time calculation failed"),
             )
         for failure in single_court_feedback["failures"]:
             st.warning(failure)
@@ -4429,10 +4794,16 @@ def main() -> None:
         .sort_values("_cycling_minutes", kind="stable")
         .drop(columns="_cycling_minutes")
     )
+    localized_single_courts = localize_frame(single_courts, language)
     st.dataframe(
-        style_club_rows(single_courts),
+        style_club_rows(
+            localized_single_courts,
+            language=language,
+        ),
         hide_index=True,
-        alt="Stand-alone public tennis courts with neighbourhoods, addresses, surfaces, and cycling times",
+        alt=ui_text(
+            "Stand-alone public tennis courts with neighbourhoods, addresses, surfaces, and cycling times"
+        ),
     )
 
 

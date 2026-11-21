@@ -6,6 +6,7 @@ A Streamlit dashboard for comparing tennis clubs in Amsterdam and checking court
 
 - [`tennis_court_finder_app.py`](./tennis_court_finder_app.py) — The main Streamlit application: displays the dashboard, club information, route and price details, and availability-check controls.
 - [`tennis_browser_worker.py`](./tennis_browser_worker.py) — Runs the browser-based checks that visit booking websites and report court availability.
+- [`tennis_ui.py`](./tennis_ui.py) — Contains Dutch UI translations, club filtering helpers, and the in-app privacy disclosure.
 - [`requirements.txt`](./requirements.txt) — Lists the Python packages required to run the application.
 - [`packages.txt`](./packages.txt) — Lists Linux system packages needed by Chromium when the app is deployed on Streamlit Community Cloud.
 - [`Dockerfile`](./Dockerfile) — Builds the Render image, including Playwright's headless Chromium shell.
@@ -25,6 +26,15 @@ probability when that service is rate-limited, optionally create a free
 `WEATHERAPI_API_KEY` in Render's environment variables. Its free plan provides
 hourly forecasts with rain chance for up to three days; MET Norway remains the
 no-key fallback for later dates.
+
+## Dashboard features
+
+The dashboard can be switched between English and Dutch. Shared club filters
+cover neighbourhood, booking access, court surface, availability, and cycling
+time when routes have been calculated. Club profiles summarize the current
+availability result, prices, access details, and links to booking and club
+websites. The in-app **Privacy & data** disclosure explains session handling
+and the external services contacted by the dashboard.
 
 ## Deploy to Render with a custom domain
 
