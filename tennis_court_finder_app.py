@@ -13,7 +13,6 @@ import subprocess
 import sys
 import tempfile
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from time import monotonic
@@ -42,7 +41,6 @@ METNO_USER_AGENT = (
     "(https://amsterdamcourtfinder.nl; "
     "https://github.com/CasperWitlox/amsterdam_court_finder)"
 )
-MEET_AND_PLAY_HTTP_CHECK_WORKERS = 2
 AMSTERDAM_TIMEZONE = ZoneInfo("Europe/Amsterdam")
 CLUB_NAMES = (
     "A.L.T.C. De Aemstelburgh",
@@ -3060,35 +3058,22 @@ def run_availability_checks(
         else:
             browser_club_names.add(club["name"])
     direct_check_failures: dict[str, str] = {}
-    if meetandplay_clubs:
-        with ThreadPoolExecutor(
-            max_workers=min(
-                MEET_AND_PLAY_HTTP_CHECK_WORKERS,
-                len(meetandplay_clubs),
+    for club in meetandplay_clubs:
+        try:
+            response = check_meetandplay_availability(
+                str(club["booking_url"]),
+                selected_date,
+                selected_time,
+                duration_minutes,
             )
-        ) as executor:
-            checks = {
-                executor.submit(
-                    check_meetandplay_availability,
-                    str(club["booking_url"]),
-                    selected_date,
-                    selected_time,
-                    duration_minutes,
-                ): club
-                for club in meetandplay_clubs
-            }
-            for future in as_completed(checks):
-                club = checks[future]
-                try:
-                    response = future.result()
-                except (requests.RequestException, ValueError) as error:
-                    direct_check_failures[club["name"]] = str(error)
-                    browser_club_names.add(club["name"])
-                    continue
-                if response is None:
-                    browser_club_names.add(club["name"])
-                else:
-                    responses[club["name"]] = response
+        except (requests.RequestException, ValueError) as error:
+            direct_check_failures[club["name"]] = str(error)
+            browser_club_names.add(club["name"])
+            continue
+        if response is None:
+            browser_club_names.add(club["name"])
+        else:
+            responses[club["name"]] = response
 
     browser_clubs = [
         club for club in clubs_to_check if club["name"] in browser_club_names
@@ -3097,8 +3082,8 @@ def run_availability_checks(
         browser_clubs,
         key=lambda club: club["name"] not in CREDENTIAL_CHECK_CLUBS,
     )
-    # Keep Chromium checks sequential; the small HTTP checks above don't launch
-    # a browser and only fall back when the page cannot be verified directly.
+    # Keep both HTTP and Chromium checks sequential; HTTP requests are paced
+    # separately to reduce upstream rate limiting.
     worker_secrets = tuple(
         secret
         for portal_credentials in credentials.values()

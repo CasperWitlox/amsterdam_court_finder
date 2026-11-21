@@ -72,6 +72,13 @@ class MeetAndPlayDirectCheckTests(unittest.TestCase):
         self.booking_url = "https://meetandplay.nl/club/02477"
         self.selected_date = date(2026, 11, 20)
         self.selected_time = time(11, 0)
+        request_interval = patch.object(
+            tennis_meetandplay,
+            "MEET_AND_PLAY_REQUEST_INTERVAL_SECONDS",
+            0,
+        )
+        request_interval.start()
+        self.addCleanup(request_interval.stop)
 
     def check_page(self, html, url=None):
         response = FakeResponse(
@@ -117,6 +124,30 @@ class MeetAndPlayDirectCheckTests(unittest.TestCase):
 
         self.assertIn("date=2026-11-20", get.call_args.args[0])
         self.assertEqual(get.call_args.kwargs["timeout"], (3, 6))
+
+    def test_waits_for_the_minimum_request_interval(self):
+        response = FakeResponse(
+            calendar_html(),
+            f"{self.booking_url}?date=2026-11-20",
+        )
+        with (
+            patch.object(
+                tennis_meetandplay,
+                "MEET_AND_PLAY_REQUEST_INTERVAL_SECONDS",
+                1.0,
+            ),
+            patch.object(tennis_meetandplay, "_LAST_REQUEST_STARTED", 50.0),
+            patch.object(tennis_meetandplay, "monotonic", side_effect=(50.25, 51.0)),
+            patch.object(tennis_meetandplay, "sleep") as wait,
+            patch.object(
+                tennis_meetandplay.requests,
+                "get",
+                return_value=response,
+            ),
+        ):
+            tennis_meetandplay._get_meetandplay_page(self.booking_url)
+
+        wait.assert_called_once_with(0.75)
 
     def test_http_429_is_reported_without_browser_fallback(self):
         response = FakeResponse(

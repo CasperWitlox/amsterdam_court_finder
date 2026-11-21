@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import re
 from datetime import date, datetime, time, timedelta
+from threading import Lock
+from time import monotonic, sleep
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -19,6 +21,9 @@ MEET_AND_PLAY_NO_SLOTS_TEXT = (
 )
 TIME_PATTERN = re.compile(r"(?<!\d)(?:[01]?\d|2[0-3]):[0-5]\d(?!\d)")
 COURT_NAME_PATTERN = re.compile(r"\bBaan\s+\S+", re.IGNORECASE)
+MEET_AND_PLAY_REQUEST_INTERVAL_SECONDS = 1.0
+_REQUEST_LOCK = Lock()
+_LAST_REQUEST_STARTED = 0.0
 
 
 def is_meetandplay_booking_url(booking_url: str) -> bool:
@@ -59,11 +64,7 @@ def check_meetandplay_availability(
     query.append(("date", selected_date.isoformat()))
     requested_url = urlunparse(parsed_url._replace(query=urlencode(query)))
 
-    response = requests.get(
-        requested_url,
-        headers={"Accept": "text/html"},
-        timeout=(3, 6),
-    )
+    response = _get_meetandplay_page(requested_url)
     if response.status_code >= 400:
         if response.status_code == 429:
             return {
@@ -218,6 +219,21 @@ def check_meetandplay_availability(
             "time and duration."
         )
     return {"status": status, "reason": reason}
+
+
+def _get_meetandplay_page(url: str) -> requests.Response:
+    global _LAST_REQUEST_STARTED
+    with _REQUEST_LOCK:
+        elapsed = monotonic() - _LAST_REQUEST_STARTED
+        delay = MEET_AND_PLAY_REQUEST_INTERVAL_SECONDS - elapsed
+        if delay > 0:
+            sleep(delay)
+        _LAST_REQUEST_STARTED = monotonic()
+        return requests.get(
+            url,
+            headers={"Accept": "text/html"},
+            timeout=(3, 6),
+        )
 
 
 def _court_show_component(soup: BeautifulSoup) -> dict[str, Any] | None:

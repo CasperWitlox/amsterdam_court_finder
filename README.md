@@ -36,14 +36,14 @@ service:
 2. Select **Docker** as the runtime and use the root `Dockerfile`. The image
    installs the app dependencies and Chromium.
 3. Set the health check path to `/_stcore/health`. Meet & Play calendars are
-   checked directly from their date-specific server-rendered pages, with up to
-   two lightweight HTTP requests in parallel; pages that cannot be
-   interpreted fall back to the browser checker. Rate-limited or failed HTTP
-   responses are reported without a slow browser retry. Other browser checks
-   reuse one Chromium process and run sequentially, with portal contexts closed
-   after each check to limit memory use. The free plan's 512 MB can still be
-   tight; if the service restarts or checks fail, consider a plan with at least
-   2 GB of RAM.
+   checked directly from their date-specific server-rendered pages, one
+   lightweight HTTP request at a time and at least one second apart. Pages that
+   cannot be interpreted fall back to the browser checker. Rate-limited or
+   failed HTTP responses are reported without a slow browser retry. Other
+   browser checks reuse one Chromium process and run sequentially, with portal
+   contexts closed after each check to limit memory use. The free plan's 512 MB
+   can still be tight; if the service restarts or checks fail, consider a plan
+   with at least 2 GB of RAM.
 4. Add required secrets, such as `GOOGLE_MAPS_API_KEY`, and the optional
    `WEATHERAPI_API_KEY` under the service's **Environment** settings. Do not add
    them to the Dockerfile or repository.
