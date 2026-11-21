@@ -157,6 +157,38 @@ select {
   background: #fff;
 }
 
+.area-browser {
+  margin: 1.5rem 0 2rem;
+}
+
+.area-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.7rem;
+}
+
+.area-link {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.8rem;
+  border: 1px solid #d4dfd6;
+  border-radius: 0.55rem;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+}
+
+.area-link:hover,
+.area-link:focus-visible {
+  border-color: #71977a;
+  background: #f9fbf7;
+}
+
+.area-count {
+  color: #50645a;
+  font-size: 0.9rem;
+}
+
 .directory-tools label {
   display: grid;
   gap: 0.3rem;

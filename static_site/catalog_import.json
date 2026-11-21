@@ -1,1 +1,25 @@
-[]
+[
+  {
+    "name": "A.L.T.C. DDV",
+    "city": "Amsterdam",
+    "sports": ["tennis"],
+    "neighborhood": "Amsterdam-Zuid (IJsbaanpad)",
+    "address": "IJsbaanpad 43, 1076 CV Amsterdam",
+    "club_website": "https://www.altcddv.nl/",
+    "court_type": "15 outdoor clay courts",
+    "access_notes": "DDV does not rent courts; only members may play.",
+    "source_url": "https://www.altcddv.nl/",
+    "last_verified": "2026-11-21"
+  },
+  {
+    "name": "L.T.C. Festina",
+    "city": "Amsterdam",
+    "sports": ["tennis"],
+    "neighborhood": "Vondelpark",
+    "address": "Vondelpark 2a, 1071 AA Amsterdam",
+    "club_website": "https://www.ltcfestina.nl/",
+    "access_notes": "Member reservations use the club app; public court hire is not confirmed.",
+    "source_url": "https://www.ltcfestina.nl/",
+    "last_verified": "2026-11-21"
+  }
+]

@@ -10,6 +10,7 @@ import re
 import shutil
 import sys
 import unicodedata
+from collections import Counter
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -379,6 +380,29 @@ def venue_card(venue: dict[str, Any], current: Path) -> str:
     """
 
 
+def area_navigation(venues: list[dict[str, Any]], current: Path) -> str:
+    counts = Counter(venue["city"] for venue in venues)
+    if not counts:
+        return ""
+
+    links = []
+    for city, count in sorted(counts.items(), key=lambda item: item[0].casefold()):
+        location_page = Path("locations") / slugify(city) / "index.html"
+        count_label = bilingual(f"{count} listings", f"{count} locaties")
+        links.append(
+            f'<a class="area-link" href="{escape(relative_link(current, location_page))}">'
+            f"<span>{escape(city)}</span>"
+            f'<span class="area-count">{count_label}</span>'
+            "</a>"
+        )
+    return f"""
+      <section class="area-browser" aria-labelledby="area-heading">
+        <h2 id="area-heading">{bilingual('Browse by location', 'Ontdek locaties per plaats')}</h2>
+        <div class="area-grid">{''.join(links)}</div>
+      </section>
+    """
+
+
 def directory_body(
     title: str,
     description: str,
@@ -389,6 +413,7 @@ def directory_body(
     *,
     selected_city: str = "",
     selected_sport: str = "",
+    browse_areas: bool = False,
     sponsor: Sponsor | None = None,
 ) -> str:
     sport_options = "".join(
@@ -424,6 +449,7 @@ def directory_body(
         </a>
       </section>
       {sponsor_card(sponsor)}
+      {area_navigation(venues, current) if browse_areas else ""}
       <section aria-labelledby="directory-heading">
         <h2 id="directory-heading">{bilingual('Find a venue', 'Vind een locatie')}</h2>
         <div class="directory-tools">
@@ -788,6 +814,7 @@ def build_site() -> int:
             home,
             cities,
             sports,
+            browse_areas=True,
             sponsor=sponsor,
         ),
         template,

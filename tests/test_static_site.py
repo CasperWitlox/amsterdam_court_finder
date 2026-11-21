@@ -20,6 +20,11 @@ class StaticSiteTests(unittest.TestCase):
             "padel",
             by_name["Tennis- en padelvereniging Badhoevedorp"]["sports"],
         )
+        self.assertEqual(len(venues), 51)
+        for name in ("A.L.T.C. DDV", "L.T.C. Festina"):
+            self.assertTrue(by_name[name]["source_url"])
+            self.assertEqual(by_name[name]["last_verified"], "2026-11-21")
+        self.assertIn("only members", by_name["A.L.T.C. DDV"]["access_notes"])
         self.assertTrue(all("tennis" in venue["sports"] for venue in venues))
         self.assertFalse(any("pickleball" in venue["sports"] for venue in venues))
 
@@ -63,9 +68,13 @@ class StaticSiteTests(unittest.TestCase):
             ).read_text(encoding="utf-8")
             sitemap = (output / "sitemap.xml").read_text(encoding="utf-8")
 
-            self.assertEqual(venue_count, 49)
+            self.assertEqual(venue_count, 51)
             self.assertIn('id="venue-search"', index)
             self.assertIn('id="sport-filter"', index)
+            self.assertIn('aria-labelledby="area-heading"', index)
+            self.assertIn('href="locations/amsterdam/index.html"', index)
+            self.assertIn("37 listings", index)
+            self.assertIn("37 locaties", index)
             self.assertIn("Local racket shop", index)
             self.assertIn("google.com/maps/search/", index)
             self.assertIn("utm_campaign=local-racket-shop", index)

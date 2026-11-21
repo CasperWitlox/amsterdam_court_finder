@@ -55,9 +55,14 @@ in `static_site/catalog_import.json`. The importer accepts tennis, padel,
 pickleball, and squash. Each imported venue must include a city, sports, and a
 public HTTP(S) `source_url`; use `static_site/catalog_import.example.json` as
 the field template. Do not copy another directory's listings without a
-permitted source. The current import file is empty, so no additional or
-nationwide listings are implied. The build uses source-controlled defaults and
-does not export a user's local `TENNIS_FINDER_DATA` file.
+permitted source. The import file contains two additional Amsterdam-area
+venues checked against their official websites; no nationwide listings are
+implied. The build uses source-controlled defaults and does not export a user's
+local `TENNIS_FINDER_DATA` file.
+
+The homepage links to each generated local area page and shows its listing
+count, making the existing location pages easier for visitors and search
+crawlers to discover.
 
 Static pages do not run availability checks or call Google Routes. They link
 to the existing Streamlit checker, official club booking pages, and Google
