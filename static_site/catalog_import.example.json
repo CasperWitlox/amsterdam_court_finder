@@ -1,0 +1,15 @@
+[
+  {
+    "name": "Example Tennis Club",
+    "city": "Amsterdam",
+    "sports": ["tennis"],
+    "neighborhood": "Example neighborhood",
+    "booking_url": "https://example.nl/book",
+    "club_website": "https://example.nl",
+    "price_info": "Check the club website",
+    "court_type": "Not verified",
+    "access_notes": "Not verified",
+    "source_url": "https://example.nl",
+    "last_verified": "2026-01-15"
+  }
+]

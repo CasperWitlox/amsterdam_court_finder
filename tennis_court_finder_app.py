@@ -29,6 +29,12 @@ from tennis_meetandplay import (
     check_meetandplay_availability,
     is_meetandplay_booking_url,
 )
+from monetization import (
+    Sponsor,
+    cloudflare_analytics_markup,
+    load_sponsor,
+    sponsor_click_url,
+)
 from tennis_ui import (
     SUPPORTED_LANGUAGES,
     filter_club_rows,
@@ -1447,6 +1453,18 @@ def ui_text(value: Any) -> Any:
         value,
         st.session_state.get("interface_language", "English"),
     )
+
+
+def render_sponsor_card(sponsor: Sponsor) -> None:
+    with st.container(border=True):
+        st.caption(ui_text("Sponsored"))
+        st.subheader(sponsor.name)
+        st.write(sponsor.message)
+        st.link_button(
+            ui_text("Visit sponsor"),
+            sponsor_click_url(sponsor),
+            icon=":material/open_in_new:",
+        )
 
 
 def format_local_date(value: date, language: str) -> str:
@@ -4152,6 +4170,20 @@ def apply_dashboard_background() -> None:
 
 def main() -> None:
     apply_dashboard_background()
+    analytics_markup = None
+    try:
+        analytics_markup = cloudflare_analytics_markup()
+    except ValueError as error:
+        st.error(f"Cloudflare Web Analytics configuration is invalid: {error}")
+    if analytics_markup:
+        st.html(analytics_markup, unsafe_allow_javascript=True)
+
+    sponsor = None
+    try:
+        sponsor = load_sponsor()
+    except ValueError as error:
+        st.error(str(error))
+
     language = st.selectbox(
         "Language / Taal",
         SUPPORTED_LANGUAGES,
@@ -4177,6 +4209,34 @@ def main() -> None:
             alt="Illustration of a tennis racket and ball",
             width="stretch",
         )
+    with st.container(horizontal=True, gap="small", wrap=True):
+        directory_url = os.environ.get("DIRECTORY_SITE_URL", "").strip()
+        if directory_url:
+            parsed_directory_url = urlparse(directory_url)
+            if (
+                parsed_directory_url.scheme == "https"
+                and parsed_directory_url.hostname
+                and not parsed_directory_url.username
+                and not parsed_directory_url.password
+            ):
+                st.link_button(
+                    ui_text("Browse directory"),
+                    directory_url,
+                    icon=":material/search:",
+                )
+            else:
+                st.error(
+                    "DIRECTORY_SITE_URL must be an absolute HTTPS URL "
+                    "without embedded credentials."
+                )
+        st.link_button(
+            ui_text("Advertise with us"),
+            "mailto:info@amsterdamcourtfinder.nl?subject=Amsterdam%20Court%20Finder%20sponsorship",
+            icon=":material/campaign:",
+        )
+    if sponsor:
+        render_sponsor_card(sponsor)
+
     try:
         clubs = load_clubs(data_path())
     except ValueError as error:
@@ -4818,7 +4878,13 @@ def main() -> None:
         ),
     )
     with st.expander(ui_text("Privacy & data")):
-        st.markdown(privacy_statement(language))
+        st.markdown(
+            privacy_statement(
+                language,
+                analytics_enabled=bool(analytics_markup),
+                sponsor_enabled=bool(sponsor),
+            )
+        )
         st.caption(
             ui_text("This summary describes how the app currently handles data.")
         )

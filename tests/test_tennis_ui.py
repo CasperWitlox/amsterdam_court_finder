@@ -85,6 +85,20 @@ class TennisUiTests(unittest.TestCase):
         self.assertIn("info@amsterdamcourtfinder.nl", statement)
         self.assertIn("plaatst geen reserveringen", statement)
 
+    def test_cloudflare_analytics_disclosure_is_available_in_each_language(self):
+        for language in SUPPORTED_LANGUAGES:
+            with self.subTest(language=language):
+                statement = privacy_statement(language, analytics_enabled=True)
+                self.assertIn("developers.cloudflare.com/web-analytics/about/", statement)
+                self.assertNotEqual(statement, privacy_statement(language))
+
+    def test_sponsor_link_disclosure_is_available_in_each_language(self):
+        for language in SUPPORTED_LANGUAGES:
+            with self.subTest(language=language):
+                statement = privacy_statement(language, sponsor_enabled=True)
+                self.assertIn("### Sponsored links", statement)
+                self.assertNotEqual(statement, privacy_statement(language))
+
     def test_added_languages_translate_and_round_trip_interface_statuses(self):
         expected_languages = {
             "中文 (简体)",

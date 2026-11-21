@@ -17,6 +17,10 @@ DUTCH_TRANSLATIONS = {
     "Available courts": "Beschikbare banen",
     "Booking platform": "Boekingsplatform",
     "Privacy & data": "Privacy en gegevens",
+    "Sponsored": "Gesponsord",
+    "Visit sponsor": "Bekijk sponsor",
+    "Browse directory": "Bekijk de gids",
+    "Advertise with us": "Adverteer bij ons",
     "Club profiles": "Clubprofielen",
     "Availability filter": "Beschikbaarheid",
     "Maximum cycling time (minutes)": "Maximale fietstijd (minuten)",
@@ -1593,11 +1597,15 @@ Para pedir acesso, correção ou eliminação de dados, ou colocar questões de 
 }
 
 
-def privacy_statement(language: str) -> str:
+def privacy_statement(
+    language: str,
+    analytics_enabled: bool = False,
+    sponsor_enabled: bool = False,
+) -> str:
     if language in ADDITIONAL_PRIVACY_STATEMENTS:
-        return ADDITIONAL_PRIVACY_STATEMENTS[language]
-    if language in {"nl", "Nederlands"}:
-        return """
+        statement = ADDITIONAL_PRIVACY_STATEMENTS[language]
+    elif language in {"nl", "Nederlands"}:
+        statement = """
 **Verantwoordelijke:** Casper Witlox / Amsterdam Court Finder<br>
 **Privacyvragen:** [info@amsterdamcourtfinder.nl](mailto:info@amsterdamcourtfinder.nl)
 
@@ -1613,7 +1621,8 @@ De app bewaart het startadres, route-uitkomsten en boekingsinloggegevens in de a
 
 Voor inzage, correctie, verwijdering of vragen kun je mailen naar [info@amsterdamcourtfinder.nl](mailto:info@amsterdamcourtfinder.nl). Beschikbaarheid en prijzen zijn momentopnamen; controleer de gegevens bij de club voordat je boekt.
 """
-    return """
+    else:
+        statement = """
 **Controller:** Casper Witlox / Amsterdam Court Finder<br>
 **Privacy contact:** [info@amsterdamcourtfinder.nl](mailto:info@amsterdamcourtfinder.nl)
 
@@ -1629,3 +1638,148 @@ The starting address, route results, and booking credentials are kept in the act
 
 For access, correction, deletion, or other privacy requests, email [info@amsterdamcourtfinder.nl](mailto:info@amsterdamcourtfinder.nl). Availability and prices are snapshots; confirm details with the club before booking.
 """
+    if analytics_enabled:
+        statement = (
+            statement.rstrip()
+            + "\n\n### Analytics\n"
+            + cloudflare_analytics_notice(language)
+        )
+    if sponsor_enabled:
+        statement = (
+            statement.rstrip()
+            + "\n\n### Sponsored links\n"
+            + sponsor_link_notice(language)
+        )
+    return statement
+
+
+_CLOUDFLARE_ANALYTICS_NOTICES = {
+    "English": (
+        "[Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/about/) "
+        "is enabled on this site. It reports page views, visits, and performance; "
+        "Cloudflare states it does not collect or use visitors' personal data. "
+        "It does not report sponsor-link conversions."
+    ),
+    "Nederlands": (
+        "[Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/about/) "
+        "is op deze site actief. Het rapporteert paginaweergaven, bezoeken en "
+        "prestaties; Cloudflare geeft aan geen persoonsgegevens van bezoekers "
+        "te verzamelen of te gebruiken. Het rapporteert geen conversies via "
+        "sponsorlinks."
+    ),
+    "中文 (简体)": (
+        "本网站启用了 [Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/about/)，"
+        "用于报告页面浏览量、访问量和性能。Cloudflare 表示该服务不会收集或使用访客的个人数据，"
+        "也不会报告赞助链接的转化情况。"
+    ),
+    "हिन्दी": (
+        "इस साइट पर [Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/about/) "
+        "सक्रिय है। यह पेज व्यू, विज़िट और प्रदर्शन की रिपोर्ट करता है। Cloudflare के अनुसार यह "
+        "आगंतुकों का व्यक्तिगत डेटा एकत्र या उपयोग नहीं करता और प्रायोजक लिंक के रूपांतरण नहीं बताता।"
+    ),
+    "Español": (
+        "En este sitio está activado [Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/about/). "
+        "Informa de visitas, páginas vistas y rendimiento; Cloudflare indica que no recopila ni utiliza "
+        "datos personales de los visitantes. No informa de conversiones en enlaces patrocinados."
+    ),
+    "Français": (
+        "[Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/about/) "
+        "est activé sur ce site. Il mesure les visites, les pages vues et les performances ; "
+        "Cloudflare indique ne pas collecter ni utiliser les données personnelles des visiteurs. "
+        "Il ne mesure pas les conversions des liens sponsorisés."
+    ),
+    "العربية": (
+        "تم تفعيل [Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/about/) "
+        "على هذا الموقع لعرض الزيارات ومشاهدات الصفحات والأداء. وتذكر Cloudflare أنها لا تجمع البيانات "
+        "الشخصية للزوار ولا تستخدمها، كما أنها لا تعرض تحويلات روابط الرعاية."
+    ),
+    "বাংলা": (
+        "এই সাইটে [Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/about/) "
+        "চালু আছে। এটি পৃষ্ঠা দেখা, ভিজিট এবং পারফরম্যান্সের তথ্য দেয়। Cloudflare জানায়, এটি "
+        "দর্শকদের ব্যক্তিগত তথ্য সংগ্রহ বা ব্যবহার করে না এবং স্পনসর লিংকের রূপান্তর জানায় না।"
+    ),
+    "Português": (
+        "O [Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/about/) "
+        "está ativo neste site. Ele informa visitas, visualizações de página e desempenho; "
+        "a Cloudflare afirma que não coleta nem usa dados pessoais dos visitantes. "
+        "Ele não informa conversões de links patrocinados."
+    ),
+    "Русский": (
+        "На сайте включена служба [Cloudflare Web Analytics](https://developers.cloudflare.com/web-analytics/about/). "
+        "Она сообщает о посещениях, просмотрах страниц и производительности. Cloudflare заявляет, "
+        "что не собирает и не использует персональные данные посетителей; конверсии по спонсорским ссылкам "
+        "не отслеживаются."
+    ),
+}
+
+
+def cloudflare_analytics_notice(language: str) -> str:
+    normalized_language = "Nederlands" if language == "nl" else language
+    return _CLOUDFLARE_ANALYTICS_NOTICES.get(
+        normalized_language,
+        _CLOUDFLARE_ANALYTICS_NOTICES["English"],
+    )
+
+
+_SPONSOR_LINK_NOTICES = {
+    "English": (
+        "When a sponsor is configured, its links include generic UTM source, "
+        "medium, and campaign parameters so the sponsor can recognize referrals "
+        "in its own analytics. This app does not add personal identifiers or "
+        "record individual sponsor clicks."
+    ),
+    "Nederlands": (
+        "Als er een sponsor is ingesteld, bevatten de links algemene UTM-bron-, "
+        "medium- en campagneparameters zodat de sponsor verwijzingen in de "
+        "eigen analytics kan herkennen. Deze app voegt geen persoonlijke "
+        "identificatie toe en registreert geen individuele sponsor-kliks."
+    ),
+    "中文 (简体)": (
+        "配置赞助商后，赞助链接会包含通用的 UTM 来源、媒介和活动参数，供赞助商在自己的分析工具中识别引荐流量。"
+        "本应用不会添加个人标识，也不会记录个人赞助链接点击。"
+    ),
+    "हिन्दी": (
+        "प्रायोजक सेट होने पर उसके लिंक में सामान्य UTM स्रोत, माध्यम और अभियान पैरामीटर होते हैं, "
+        "ताकि प्रायोजक अपने विश्लेषण में रेफ़रल पहचान सके। यह ऐप व्यक्तिगत पहचानकर्ता नहीं जोड़ता "
+        "और अलग-अलग प्रायोजक क्लिक दर्ज नहीं करता।"
+    ),
+    "Español": (
+        "Cuando hay un patrocinador, sus enlaces incluyen parámetros UTM genéricos de origen, "
+        "medio y campaña para que pueda reconocer las visitas referidas en sus propias analíticas. "
+        "Esta aplicación no añade identificadores personales ni registra clics individuales."
+    ),
+    "Français": (
+        "Lorsqu’un sponsor est configuré, ses liens comportent des paramètres UTM génériques "
+        "de source, de support et de campagne afin qu’il puisse reconnaître les visites référées "
+        "dans ses propres outils d’analyse. L’application n’ajoute aucun identifiant personnel "
+        "et n’enregistre pas les clics individuels."
+    ),
+    "العربية": (
+        "عند إعداد راعٍ، تتضمن روابطه معاملات UTM عامة للمصدر والوسيط والحملة، لكي يتمكن الراعي من "
+        "تمييز الزيارات المُحالة في أدوات التحليل الخاصة به. لا يضيف التطبيق معرّفات شخصية ولا يسجل "
+        "نقرات الرعاية الفردية."
+    ),
+    "বাংলা": (
+        "স্পনসর সেট করা থাকলে তার লিংকে সাধারণ UTM উৎস, মাধ্যম ও ক্যাম্পেইন প্যারামিটার থাকে, "
+        "যাতে স্পনসর নিজের অ্যানালিটিক্সে রেফারেল চিনতে পারে। এই অ্যাপ ব্যক্তিগত শনাক্তকারী যোগ করে না "
+        "এবং আলাদা স্পনসর ক্লিক রেকর্ড করে না।"
+    ),
+    "Português": (
+        "Quando há um patrocinador, os links incluem parâmetros UTM genéricos de origem, meio e campanha "
+        "para que ele identifique visitas encaminhadas nas próprias ferramentas de análise. "
+        "Este aplicativo não adiciona identificadores pessoais nem registra cliques individuais."
+    ),
+    "Русский": (
+        "Если настроен спонсор, его ссылки содержат общие параметры UTM источника, канала и кампании, "
+        "чтобы спонсор мог распознавать переходы в своей аналитике. Приложение не добавляет личные "
+        "идентификаторы и не записывает отдельные клики по спонсорским ссылкам."
+    ),
+}
+
+
+def sponsor_link_notice(language: str) -> str:
+    normalized_language = "Nederlands" if language == "nl" else language
+    return _SPONSOR_LINK_NOTICES.get(
+        normalized_language,
+        _SPONSOR_LINK_NOTICES["English"],
+    )

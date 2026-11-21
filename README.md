@@ -7,7 +7,13 @@ A Streamlit dashboard for comparing tennis clubs in Amsterdam and checking court
 - [`tennis_court_finder_app.py`](./tennis_court_finder_app.py) — The main Streamlit application: displays the dashboard, club information, route and price details, and availability-check controls.
 - [`tennis_browser_worker.py`](./tennis_browser_worker.py) — Runs the browser-based checks that visit booking websites and report court availability.
 - [`tennis_ui.py`](./tennis_ui.py) — Contains UI translations, club filtering helpers, and the in-app privacy disclosure.
+- [`monetization.py`](./monetization.py) — Validates optional sponsor and Cloudflare Web Analytics configuration.
+- [`scripts/build_static_site.py`](./scripts/build_static_site.py) — Generates a separate searchable static directory, sport/location pages, profiles, and advertiser information from the public app data.
+- [`static_site/catalog_import.example.json`](./static_site/catalog_import.example.json) — Schema example for adding source-backed venues and sports; it is not included in the live directory.
+- [`static_site/catalog_import.json`](./static_site/catalog_import.json) — Additional verified venue entries to publish in the static directory.
+- [`docs/advertiser-outreach.md`](./docs/advertiser-outreach.md) — Sponsorship pilot email and a permission-aware prospecting checklist.
 - [`requirements.txt`](./requirements.txt) — Lists the Python packages required to run the application.
+- [`requirements-static.txt`](./requirements-static.txt) — Build-only dependencies for generating the static pages.
 - [`packages.txt`](./packages.txt) — Lists Linux system packages needed by Chromium when the app is deployed on Streamlit Community Cloud.
 - [`Dockerfile`](./Dockerfile) — Builds the Render image, including Playwright's headless Chromium shell.
 - [`.dockerignore`](./.dockerignore) — Excludes local files and secrets from the Docker build context.
@@ -39,6 +45,71 @@ availability result, prices, access details, and links to booking and club
 websites. The in-app **Privacy & data** disclosure explains session handling
 and the external services contacted by the dashboard, and appears at the
 bottom of the page.
+
+## Static directory and sponsorship
+
+The static site is a lightweight, search-first venue directory for tennis and
+padel in the Amsterdam area. It generates sport, location, and venue-profile
+pages from the app's existing public club data, plus any source-backed entries
+in `static_site/catalog_import.json`. The importer accepts tennis, padel,
+pickleball, and squash. Each imported venue must include a city, sports, and a
+public HTTP(S) `source_url`; use `static_site/catalog_import.example.json` as
+the field template. Do not copy another directory's listings without a
+permitted source. The current import file is empty, so no additional or
+nationwide listings are implied. The build uses source-controlled defaults and
+does not export a user's local `TENNIS_FINDER_DATA` file.
+
+Static pages do not run availability checks or call Google Routes. They link
+to the existing Streamlit checker, official club booking pages, and Google
+Maps search results without embedding a map or requiring a Maps API key. This
+keeps directory traffic and SEO pages off the Render service; availability
+remains on-demand in the existing app.
+
+Build locally on Windows after installing the project requirements:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_static_site.py
+```
+
+The generated site is written to the ignored `static_site/dist` directory.
+For Cloudflare Pages, connect the repository, use the repository root as the
+project root, set the build command to
+`python -m pip install -r requirements-static.txt && python scripts/build_static_site.py`,
+and set the output directory to `static_site/dist`. Attach a subdomain such as
+`directory.amsterdamcourtfinder.nl` so the current Render root domain remains
+unchanged. Set `DIRECTORY_SITE_URL` to the final HTTPS URL at build time. After
+the Pages site is deployed, set the same variable in Render so the checker
+shows a directory link.
+
+Enable Cloudflare Web Analytics under the Pages project's **Metrics** tab for
+the static pages. For the Render checker, add its hostname as a separate
+Cloudflare Web Analytics site, then set the token from Cloudflare's snippet as
+`CLOUDFLARE_WEB_ANALYTICS_TOKEN` in Render. The app only loads the beacon when a
+valid token is configured and then adds a translated disclosure to **Privacy
+& data**. Do not enable both automatic Pages injection and a manual token on
+the same static hostname. Cloudflare reports visits and page performance; it
+does not provide sponsor-click conversion counts. Sponsor URLs carry generic
+UTM campaign tags so the advertiser can measure referred visits in its own
+analytics.
+
+The optional direct-sponsor card appears only when all three of these
+environment variables are configured in Render and in the static build
+environment:
+
+- `ACF_SPONSOR_NAME`
+- `ACF_SPONSOR_MESSAGE`
+- `ACF_SPONSOR_URL` (HTTPS only)
+
+Leave them unset when there is no sponsor. Paid placements are labelled and
+do not change venue ordering. No audience figures are published until actual
+analytics data exists. The advertiser page offers a fixed-fee 30-day pilot
+without promising bookings.
+
+For Netherlands business email outreach, see
+[`docs/advertiser-outreach.md`](./docs/advertiser-outreach.md). In particular,
+do not treat every publicly visible business email address as permission for
+commercial outreach; follow the address's stated purpose, identify the sender,
+include a valid postal address, and honor objections.
 
 ## Deploy to Render with a custom domain
 

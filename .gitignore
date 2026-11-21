@@ -6,3 +6,4 @@ secrets.toml
 venv/
 __pycache__/
 *.py[cod]
+static_site/dist/
